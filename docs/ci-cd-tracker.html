@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sigen V1.0 CI/CD Tracker</title>
+<style>
+  :root {
+    --ivory:#FAF9F5; --white:#FFFFFF; --slate:#141413;
+    --clay:#D97757; --olive:#788C5D; --rust:#B04A3F; --oat:#E3DACC;
+    --gray-150:#F0EEE6; --gray-300:#D1CFC5; --gray-500:#87867F; --gray-700:#3D3D3A;
+    --border:1.5px solid var(--gray-300);
+    --radius-panel:12px; --radius-row:8px; --radius-pill:999px;
+    --serif: ui-serif, Georgia, "Times New Roman", serif;
+    --sans:  system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono:  ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { background:var(--ivory); color:var(--gray-700); font-family:var(--sans); line-height:1.6; -webkit-font-smoothing:antialiased; padding:48px 24px 96px; }
+  .page { max-width:1120px; margin:0 auto; }
+  .eyebrow { font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--gray-500); margin-bottom:10px; }
+  h1 { font-family:var(--serif); font-weight:500; letter-spacing:-.01em; font-size:38px; color:var(--slate); }
+  h2 { font-family:var(--serif); font-weight:500; font-size:24px; margin:46px 0 16px; color:var(--slate); scroll-margin-top:24px; }
+  h3 { font-family:var(--serif); font-weight:500; font-size:18px; color:var(--slate); margin:8px 0 8px; }
+  p { margin:8px 0; }
+  a { color:var(--clay); text-decoration:none; border-bottom:1px solid rgba(217,119,87,.35); }
+  a:hover { border-bottom-color:var(--clay); }
+  .lead { font-size:17px; color:var(--gray-700); margin-top:12px; max-width:820px; }
+  .layout { display:grid; grid-template-columns:220px minmax(0,1fr); gap:36px; margin-top:28px; }
+  aside { position:sticky; top:24px; align-self:start; }
+  aside .card { padding:14px; }
+  aside a { display:block; color:var(--gray-500); border:0; padding:5px 0 5px 10px; border-left:2px solid transparent; font-size:14px; }
+  aside a:hover { color:var(--clay); border-left-color:var(--clay); }
+  .card { background:var(--white); border:var(--border); border-radius:var(--radius-panel); padding:20px; }
+  .card.warn { border-left:4px solid var(--clay); }
+  .card.ok { border-left:4px solid var(--olive); }
+  .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-top:18px; }
+  .grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-top:16px; }
+  .metric { font-family:var(--serif); font-size:30px; color:var(--slate); line-height:1.15; }
+  .sub { color:var(--gray-500); font-size:13px; font-family:var(--mono); }
+  .callout { background:rgba(217,119,87,.06); border-left:3px solid var(--clay); border-radius:var(--radius-row); padding:14px 16px; margin:18px 0; }
+  .callout.ok { background:rgba(120,140,93,.08); border-left-color:var(--olive); }
+  .pill { display:inline-block; border-radius:var(--radius-pill); padding:2px 10px; font-family:var(--mono); font-size:11px; background:var(--oat); color:var(--gray-700); }
+  .pill.ok { background:rgba(120,140,93,.18); color:var(--olive); }
+  .pill.warn { background:rgba(217,119,87,.14); color:var(--clay); }
+  .pill.stop { background:rgba(176,74,63,.15); color:var(--rust); }
+  table { width:100%; border-collapse:collapse; background:var(--white); border:var(--border); border-radius:var(--radius-panel); overflow:hidden; margin-top:12px; }
+  thead { background:var(--gray-150); }
+  th { font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--gray-500); text-align:left; padding:10px 14px; }
+  td { padding:10px 14px; border-top:1px solid var(--gray-150); font-size:14px; vertical-align:top; }
+  code, .mono { font-family:var(--mono); font-size:.95em; }
+  .code { background:var(--slate); color:#E8E6DF; border-radius:var(--radius-panel); padding:16px 18px; font-family:var(--mono); font-size:13px; overflow-x:auto; margin-top:12px; }
+  .timeline { margin-top:14px; border-left:2px solid var(--gray-300); padding-left:18px; }
+  .event { position:relative; margin:0 0 18px; }
+  .event:before { content:""; position:absolute; width:10px; height:10px; left:-24px; top:7px; border-radius:50%; background:var(--gray-500); border:3px solid var(--ivory); }
+  .event.done:before { background:var(--olive); }
+  .event.next:before { background:var(--clay); }
+  .event.risk:before { background:var(--rust); }
+  .small { font-size:13px; color:var(--gray-500); }
+  details { background:var(--white); border:var(--border); border-radius:var(--radius-panel); padding:14px 16px; margin:12px 0; }
+  summary { cursor:pointer; font-family:var(--mono); color:var(--slate); }
+  @media (max-width:860px) { .layout { grid-template-columns:1fr; } aside { display:none; } .grid-4,.grid-2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <p class="eyebrow">Sigen · V1.0 CI/CD tracker · living document</p>
+  <h1>Sigen Dashboard CI/CD Work Tracker</h1>
+  <p class="lead">A plain-language, self-contained HTML tracker for the production dashboard at <strong>sigen.sprees.net</strong>, staging at <strong>sigen-staging.sprees.net</strong>, GitHub PRs, next steps, and how to resume this work even after changing models.</p>
+
+  <div class="grid-4">
+    <div class="card ok"><p class="eyebrow">Production</p><div class="metric">OK</div><p class="sub">/api/health live</p></div>
+    <div class="card ok"><p class="eyebrow">Staging</p><div class="metric">OK</div><p class="sub">/api/health live</p></div>
+    <div class="card warn"><p class="eyebrow">Open PRs</p><div class="metric">2</div><p class="sub">#5 baseline · #6 hygiene</p></div>
+    <div class="card"><p class="eyebrow">Deployment</p><div class="metric">0</div><p class="sub">no restarts/deploys done</p></div>
+  </div>
+
+  <div class="layout">
+    <aside>
+      <div class="card">
+        <p class="eyebrow">Navigate</p>
+        <a href="#current-state">Current state</a>
+        <a href="#timeline">Timeline</a>
+        <a href="#prs">Open PRs</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#risks">Risks</a>
+        <a href="#next">Next steps</a>
+        <a href="#resume">Resume after model change</a>
+        <a href="#commands">Useful commands</a>
+      </div>
+    </aside>
+
+    <main>
+      <section id="current-state">
+        <h2>Current state</h2>
+        <table>
+          <thead><tr><th>Area</th><th>Status</th><th>Details</th></tr></thead>
+          <tbody>
+            <tr><td>Production URL</td><td><span class="pill ok">healthy</span></td><td><a href="https://sigen.sprees.net/">https://sigen.sprees.net/</a> · Basic Auth enabled · public health endpoint OK.</td></tr>
+            <tr><td>Staging URL</td><td><span class="pill ok">healthy</span></td><td><a href="https://sigen-staging.sprees.net/">https://sigen-staging.sprees.net/</a> · Basic Auth enabled · public health endpoint OK.</td></tr>
+            <tr><td>GitHub source repo</td><td><span class="pill warn">read-only for current account</span></td><td><a href="https://github.com/GerardBrowne/sig-data">GerardBrowne/sig-data</a>. Current GitHub account <span class="mono">Supreamth</span> has READ permission, so PR branches are pushed from fork <span class="mono">Supreamth/sig-data</span>.</td></tr>
+            <tr><td>Local repo</td><td><span class="pill ok">available</span></td><td><span class="mono">/root/projects/sig-data</span>. Current branch after PR2 work: <span class="mono">security/repo-hygiene-main</span>.</td></tr>
+            <tr><td>Excluded worktree item</td><td><span class="pill warn">intentional</span></td><td><span class="mono">ev-solar-flow/</span> remains untracked and intentionally excluded from baseline PR #5.</td></tr>
+          </tbody>
+        </table>
+        <div class="callout ok"><strong>Important.</strong> No production or staging deployment has been executed during this CI/CD preparation. The live health checks still pass.</div>
+      </section>
+
+      <section id="timeline">
+        <h2>Timeline of work so far</h2>
+        <div class="timeline">
+          <div class="event done"><h3>Phase 1 audit</h3><p>Inspected production/staging URLs, local repositories, Docker Compose layout, health endpoints, and GitHub state. Found no existing CI workflows and identified that the live production app was not fully represented in GitHub.</p></div>
+          <div class="event done"><h3>Phase 2A inclusion plan</h3><p>Classified files into V1.0 include/exclude/defer buckets. Decided production baseline should be committed first, while staging house-map and EV solar flow stay separate.</p></div>
+          <div class="event done"><h3>PR #5 opened</h3><p>Committed and opened the V1.0 production baseline PR from fork branch <span class="mono">release/v1.0-baseline</span>. This captures the live ECharts dashboard, alternate dashboards, collectors, docs, and compose wiring.</p></div>
+          <div class="event done"><h3>PR #6 opened</h3><p>Committed and opened the repository hygiene/security PR from fork branch <span class="mono">security/repo-hygiene-main</span>. It removes tracked configured secret manifests and adds a Cloudflare tunnel secret example template.</p></div>
+          <div class="event next"><h3>Next: CI-only PR</h3><p>Add GitHub Actions checks only. No deployment. This should verify syntax, Python compilation, Docker builds, Compose config, and safe path hygiene.</p></div>
+        </div>
+      </section>
+
+      <section id="prs">
+        <h2>Open PRs</h2>
+        <table>
+          <thead><tr><th>PR</th><th>Purpose</th><th>Status</th><th>Merge note</th></tr></thead>
+          <tbody>
+            <tr><td><a href="https://github.com/GerardBrowne/sig-data/pull/5">#5</a></td><td>Capture V1.0 production baseline.</td><td><span class="pill warn">open</span></td><td>Merge this first so GitHub represents the current production app.</td></tr>
+            <tr><td><a href="https://github.com/GerardBrowne/sig-data/pull/6">#6</a></td><td>Remove tracked secret-looking manifests and improve ignore rules.</td><td><span class="pill warn">open</span></td><td>Can merge independently, but if GitHub reports conflicts after #5 merge, rebase/refresh from main.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="architecture">
+        <h2>Current deployment architecture</h2>
+        <div class="grid-2">
+          <div class="card">
+            <p class="eyebrow">Production</p>
+            <h3>sigen.sprees.net</h3>
+            <p>Cloudflare → VPS reverse proxy → <span class="mono">127.0.0.1:3200</span> → Docker container <span class="mono">echarts-dashboard</span>.</p>
+          </div>
+          <div class="card">
+            <p class="eyebrow">Staging</p>
+            <h3>sigen-staging.sprees.net</h3>
+            <p>Cloudflare → VPS reverse proxy → <span class="mono">127.0.0.1:3400</span> → Docker container <span class="mono">echarts-dashboard-staging</span>.</p>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <p class="eyebrow">Shared telemetry</p>
+          <p>Both dashboards read from the same InfluxDB telemetry source: station <span class="mono">72026051000002</span>, org <span class="mono">sigorg</span>, bucket <span class="mono">energy_metrics</span>.</p>
+        </div>
+      </section>
+
+      <section id="risks">
+        <h2>Risks and decisions</h2>
+        <table>
+          <thead><tr><th>Risk</th><th>Decision</th></tr></thead>
+          <tbody>
+            <tr><td>Secret files were tracked before PR #6.</td><td>PR #6 prevents future tracking. If those files ever contained real credentials, rotate them separately because a normal PR does not rewrite Git history.</td></tr>
+            <tr><td>No CI exists yet.</td><td>Next PR should be CI-only. Do not deploy until checks are green and staging deployment is proven.</td></tr>
+            <tr><td>Staging house-map UI is experimental.</td><td>Keep it out of V1.0 baseline until telemetry mapping is complete.</td></tr>
+            <tr><td>Current GitHub account cannot push to upstream.</td><td>Use fork PRs from <span class="mono">Supreamth/sig-data</span> until upstream write access is granted.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="next">
+        <h2>Recommended next PR sequence</h2>
+        <div class="timeline">
+          <div class="event next"><h3>PR #7 — CI only</h3><p>Add <span class="mono">.github/workflows/ci.yml</span>. Checks: node syntax, Python compile, Docker builds, Compose config, path hygiene. No deploy.</p></div>
+          <div class="event"><h3>PR #8 — staging deploy</h3><p>Add self-hosted runner deployment to <span class="mono">sigen-staging.sprees.net</span>. Deploy staging only after CI succeeds.</p></div>
+          <div class="event"><h3>PR #9 — production release workflow</h3><p>Add manual/tag-triggered production deployment with GitHub Environment approval, health checks, and rollback.</p></div>
+        </div>
+      </section>
+
+      <section id="resume">
+        <h2>How to continue after changing model</h2>
+        <div class="callout"><strong>Use this if the model changes or you start a new terminal.</strong> Hermes keeps sessions in its session database, so you can resume by session ID or continue the most recent session.</div>
+        <table>
+          <thead><tr><th>Need</th><th>Command / action</th></tr></thead>
+          <tbody>
+            <tr><td>Continue most recent session</td><td><span class="mono">hermes --continue</span></td></tr>
+            <tr><td>Resume this CI/CD session by ID</td><td><span class="mono">hermes --resume 20260711_115724_5e2b76</span></td></tr>
+            <tr><td>List sessions if unsure</td><td><span class="mono">hermes sessions list</span></td></tr>
+            <tr><td>Change model inside a running chat</td><td>Use slash command <span class="mono">/model</span>, pick the model, then continue in the same session.</td></tr>
+            <tr><td>Start with a specific model then resume</td><td>Start Hermes with the desired model via the model picker or config, then run <span class="mono">hermes --resume &lt;session-id&gt;</span>.</td></tr>
+          </tbody>
+        </table>
+        <details>
+          <summary>Suggested handoff prompt after resuming</summary>
+          <div class="code">Continue Sigen V1.0 CI/CD work. Read /root/projects/sig-data/docs/ci-cd-tracker.html first. Current open PRs: #5 V1.0 baseline and #6 secret-manifest cleanup. Do not deploy unless I explicitly approve. Next recommended task is CI-only PR.</div>
+        </details>
+      </section>
+
+      <section id="commands">
+        <h2>Useful commands</h2>
+        <div class="code"># Open this tracker locally
+xdg-open /root/projects/sig-data/docs/ci-cd-tracker.html
+
+# Print the path if xdg-open is unavailable
+echo /root/projects/sig-data/docs/ci-cd-tracker.html
+
+# Check current PRs
+gh pr list --repo GerardBrowne/sig-data --author Supreamth --state open
+
+# Check live health without credentials
+curl -s https://sigen.sprees.net/api/health
+curl -s https://sigen-staging.sprees.net/api/health
+
+# Resume this Hermes session later
+hermes --resume 20260711_115724_5e2b76</div>
+      </section>
+    </main>
+  </div>
+</div>
+</body>
+</html>
