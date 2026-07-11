@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sigen Live Power Flow</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Power Flow Card Plus · Sigen APAC · InfluxDB</p>
+      <h1>Live Home Energy Flow</h1>
+      <p class="subtitle">A standalone dashboard that drives flixlix/power-flow-card-plus with your live Sigen telemetry.</p>
+    </div>
+    <div class="hero-actions">
+      <a class="public-link" href="http://72.62.199.163:3300/" target="_blank" rel="noopener noreferrer">Public URL</a>
+      <span id="status-badge" class="pending">syncing</span>
+      <span id="last-updated">connecting…</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="error-container"></div>
+
+    <section class="flow-stage">
+      <div class="stage-copy">
+        <span class="kicker">Instantaneous power</span>
+        <h2>Solar → Battery → Home → Grid</h2>
+        <p>The center card is the actual Home Assistant custom card, fed by a standalone live-data adapter over your local InfluxDB API.</p>
+      </div>
+      <div id="power-card-shell" class="power-card-shell">
+        <div id="pv-string-strip" class="pv-string-strip" aria-label="PV string inputs to Solar">
+          <article class="pv-string-node pv1"><span>PV1</span><strong id="pv1-node-power">—</strong><small id="pv1-node-sub">No string data</small></article>
+          <article class="pv-string-node pv2"><span>PV2</span><strong id="pv2-node-power">—</strong><small id="pv2-node-sub">No string data</small></article>
+          <article class="pv-string-node pv3"><span>PV3</span><strong id="pv3-node-power">—</strong><small id="pv3-node-sub">No string data</small></article>
+          <article class="pv-string-node pv4"><span>PV4</span><strong id="pv4-node-power">—</strong><small id="pv4-node-sub">No string data</small></article>
+        </div>
+        <div class="pv-string-flow-label">PV1–PV4 string nodes → Solar</div>
+        <div class="card-loading">Loading Power Flow Card Plus…</div>
+      </div>
+    </section>
+
+    <section class="metric-grid">
+      <article class="metric solar"><span>PV Now</span><strong id="m-pv">—</strong><small id="m-pv-sub">Today —</small></article>
+      <article class="metric load"><span>Home Load</span><strong id="m-load">—</strong><small>Current demand</small></article>
+      <article class="metric battery"><span>Battery</span><strong id="m-soc">—</strong><small id="m-batt-sub">—</small></article>
+      <article class="metric grid"><span>Grid</span><strong id="m-grid">—</strong><small id="m-grid-sub">—</small></article>
+    </section>
+
+    <section class="status-strip">
+      <div><b id="grid-dot" class="dot off"></b><span>Grid</span><strong id="grid-state">—</strong></div>
+      <div><b id="station-dot" class="dot off"></b><span>Station</span><strong id="station-state">—</strong></div>
+      <div><b class="dot on"></b><span>DB Timestamp</span><strong id="db-ts">—</strong></div>
+    </section>
+
+    <section class="timeline-panel">
+      <div class="panel-head">
+        <div>
+          <span class="kicker">Recent trend</span>
+          <h2>Last <span id="range-label">2h</span></h2>
+        </div>
+        <div class="range-selector" aria-label="History range">
+          <button class="range-btn" data-range="30m">30m</button>
+          <button class="range-btn active" data-range="2h">2h</button>
+          <button class="range-btn" data-range="6h">6h</button>
+          <button class="range-btn" data-range="24h">24h</button>
+        </div>
+      </div>
+      <div id="sparkline" class="sparkline" aria-label="Power history chart"></div>
+      <div class="legend-row">
+        <span><i class="solar-bg"></i>PV</span>
+        <span><i class="load-bg"></i>Load</span>
+        <span><i class="grid-bg"></i>Grid</span>
+        <span><i class="battery-bg"></i>Battery</span>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/vendor/power-flow-card-plus.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

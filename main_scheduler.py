@@ -136,12 +136,18 @@ def run_normal_tasks(active_sigen_token, current_time_local):
                 sigen_api_circuit_breaker.record_success()
                 logger.debug(f"Raw sigen_energy_payload from API: {json.dumps(sigen_api_energy_flow_data, indent=2)}")
 
+                _buy_sell_raw = sigen_api_energy_flow_data.get("buySellPower")
+                try:
+                    _grid_idle = 1 if abs(float(_buy_sell_raw)) <= 0.05 else 0
+                except (TypeError, ValueError):
+                    _grid_idle = None
+
                 influx_energy_payload = {
                     "pv_day_nrg": sigen_api_energy_flow_data.get("pvDayNrg"),
                     "pv_power": sigen_api_energy_flow_data.get("pvPower"),
                     "load_power": sigen_api_energy_flow_data.get("loadPower"),
                     "battery_soc": sigen_api_energy_flow_data.get("batterySoc"),
-                    "grid_flow_power": sigen_api_energy_flow_data.get("buySellPower"),
+                    "grid_flow_power": _buy_sell_raw,
                     "battery_power": sigen_api_energy_flow_data.get("batteryPower"),
                     "on_grid": 1 if sigen_api_energy_flow_data.get("onGrid") else 0 if sigen_api_energy_flow_data.get("onGrid") is not None else None,
                     "station_status": sigen_api_energy_flow_data.get("stationStatus"),
@@ -150,7 +156,8 @@ def run_normal_tasks(active_sigen_token, current_time_local):
                     "ev_power": sigen_api_energy_flow_data.get("evPower"),
                     "generator_power": sigen_api_energy_flow_data.get("generatorPower"),
                     "heat_pump_power": sigen_api_energy_flow_data.get("heatPumpPower"),
-                    "third_pv_power": sigen_api_energy_flow_data.get("thirdPvPower")
+                    "third_pv_power": sigen_api_energy_flow_data.get("thirdPvPower"),
+                    "grid_idle": _grid_idle,
                 }
 
                 influx_payload_ready_for_writer = {key: value for key, value in influx_energy_payload.items() if value is not None}

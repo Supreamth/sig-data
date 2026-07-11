@@ -313,3 +313,103 @@ def write_sigen_daily_summary_to_influxdb(daily_summary_data, station_id_tag, ta
             )
     except Exception as e:
         logger.exception(f"Error writing sigen_daily_summary data: {e}")
+
+
+def write_raw_snapshot_to_influxdb(payload_json, station_id_tag, endpoint):
+    """Writes a raw API response JSON string to the mysigen_raw_snapshots measurement.
+
+    payload_json must contain only API response data — never tokens or credentials.
+    """
+    if not INFLUX_CLIENT_AVAILABLE:
+        return
+    if not all([INFLUX_TOKEN, INFLUX_ORG, INFLUX_BUCKET]):
+        return
+    try:
+        with InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG) as client:
+            write_api = client.write_api(write_options=SYNCHRONOUS)
+            point = (
+                Point("mysigen_raw_snapshots")
+                .tag("station_id", station_id_tag)
+                .tag("source", "mysigen_web_api")
+                .tag("endpoint", endpoint)
+                .field("payload_json", payload_json)
+                .time(datetime.now(timezone.utc))
+            )
+            write_api.write(bucket=INFLUX_BUCKET, record=point)
+            logger.debug("Wrote raw snapshot to mysigen_raw_snapshots.")
+    except Exception as e:
+        logger.exception(f"Error writing raw snapshot: {e}")
+
+
+def write_collector_health_to_influxdb(health_data, station_id_tag):
+    """Writes collector health metrics to the mysigen_collector_health measurement."""
+    if not INFLUX_CLIENT_AVAILABLE:
+        return
+    if not all([INFLUX_TOKEN, INFLUX_ORG, INFLUX_BUCKET]):
+        return
+    if not health_data:
+        return
+    try:
+        with InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG) as client:
+            write_api = client.write_api(write_options=SYNCHRONOUS)
+            point = (
+                Point("mysigen_collector_health")
+                .tag("station_id", station_id_tag)
+                .time(datetime.now(timezone.utc))
+            )
+            for key, value in health_data.items():
+                if value is None:
+                    continue
+                try:
+                    point = point.field(key, float(value))
+                except (ValueError, TypeError):
+                    point = point.field(key, str(value))
+            write_api.write(bucket=INFLUX_BUCKET, record=point)
+            logger.debug("Wrote collector health to mysigen_collector_health.")
+    except Exception as e:
+        logger.exception(f"Error writing collector health: {e}")
+
+
+def write_station_info_to_influxdb(station_info_data, station_id_tag):
+    """Writes station metadata scalar fields to the station_info measurement."""
+    if not INFLUX_CLIENT_AVAILABLE:
+        return
+    if not station_info_data:
+        return
+    if not all([INFLUX_TOKEN, INFLUX_ORG, INFLUX_BUCKET]):
+        return
+
+    data = station_info_data[0] if isinstance(station_info_data, list) and station_info_data else station_info_data
+    if not isinstance(data, dict):
+        logger.warning("station_info_data is not a dict or non-empty list; skipping write.")
+        return
+
+    try:
+        with InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG) as client:
+            write_api = client.write_api(write_options=SYNCHRONOUS)
+            point = (
+                Point("station_info")
+                .tag("station_id", station_id_tag)
+                .tag("source", "mysigen_web_api")
+                .time(datetime.now(timezone.utc))
+            )
+            field_added = False
+            for key, value in data.items():
+                if value is None:
+                    continue
+                if isinstance(value, bool):
+                    point = point.field(key, 1.0 if value else 0.0)
+                    field_added = True
+                elif isinstance(value, (int, float)):
+                    point = point.field(key, float(value))
+                    field_added = True
+                elif isinstance(value, str) and 0 < len(value) <= 500:
+                    point = point.field(key, value)
+                    field_added = True
+            if field_added:
+                write_api.write(bucket=INFLUX_BUCKET, record=point)
+                logger.debug("Wrote station metadata to station_info.")
+            else:
+                logger.warning("No writable scalar fields found in station_info_data.")
+    except Exception as e:
+        logger.exception(f"Error writing station_info: {e}")

@@ -164,6 +164,48 @@ A comprehensive Kubernetes-native application for monitoring Sigen solar inverte
     * Select your InfluxDB data source when prompted.
     * Click "Import."
 
+## MySigen Realtime Collector
+
+`mysigen_realtime_collector.py` is a dedicated, robust polling loop for real-time energy flow from the MySigen web API. It runs independently of the main scheduler, writes to four InfluxDB measurements, and recovers automatically from transient API or network errors.
+
+### Security — password storage
+
+**Never store your actual MySigen account password.** The collector authenticates using `SIGEN_TRANSFORMED_PASSWORD` — the pre-hashed value that the MySigen web app sends to the server. Capture it once from your browser's Network tab (see the *Sigen API Credentials* section above). If Sigen ever adds app-side password transformation to a public SDK, storing the raw password would become possible; until then, use the captured transformed value.
+
+### Additional environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `MYSIGEN_REALTIME_INTERVAL` | `15` | Seconds between energy-flow polls |
+| `MYSIGEN_STATION_INFO_INTERVAL` | `3600` | Seconds between station-info refreshes |
+
+`SIGEN_STATION_ID` is optional; if omitted the collector queries the station-info endpoint to discover it automatically. Set it explicitly if auto-discovery fails.
+
+### InfluxDB measurements written
+
+| Measurement | Tags | Description |
+|---|---|---|
+| `energy_metrics` | `station_id` | Normalised real-time energy flow (same fields as main scheduler) |
+| `mysigen_raw_snapshots` | `station_id`, `source`, `endpoint` | Raw API JSON snapshot (no credentials) |
+| `mysigen_collector_health` | `station_id` | Failure count, last success timestamp, cycle status |
+| `station_info` | `station_id`, `source` | Station metadata refreshed hourly |
+
+### Run standalone
+
+```bash
+python mysigen_realtime_collector.py
+```
+
+### Run with Docker Compose (stack profile)
+
+```bash
+# Start this service only
+docker compose --profile stack up -d mysigen-realtime-collector
+
+# Or bring up the full stack
+docker compose --profile stack up -d
+```
+
 ## Docker
 
 Build image:
