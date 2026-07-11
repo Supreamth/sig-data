@@ -72,7 +72,7 @@
   <div class="grid-4">
     <div class="card ok"><p class="eyebrow">Production</p><div class="metric">OK</div><p class="sub">/api/health live</p></div>
     <div class="card ok"><p class="eyebrow">Staging</p><div class="metric">OK</div><p class="sub">/api/health live</p></div>
-    <div class="card warn"><p class="eyebrow">Open PRs</p><div class="metric">3</div><p class="sub">#5 baseline · #6 hygiene · #7 CI</p></div>
+    <div class="card warn"><p class="eyebrow">Canonical PR</p><div class="metric">pending</div><p class="sub">Supreamth main migration branch ready</p></div>
     <div class="card"><p class="eyebrow">Deployment</p><div class="metric">0</div><p class="sub">no restarts/deploys done</p></div>
   </div>
 
@@ -99,7 +99,7 @@
           <tbody>
             <tr><td>Production URL</td><td><span class="pill ok">healthy</span></td><td><a href="https://sigen.sprees.net/">https://sigen.sprees.net/</a> · Basic Auth enabled · public health endpoint OK.</td></tr>
             <tr><td>Staging URL</td><td><span class="pill ok">healthy</span></td><td><a href="https://sigen-staging.sprees.net/">https://sigen-staging.sprees.net/</a> · Basic Auth enabled · public health endpoint OK.</td></tr>
-            <tr><td>GitHub source repo</td><td><span class="pill warn">read-only for current account</span></td><td><a href="https://github.com/GerardBrowne/sig-data">GerardBrowne/sig-data</a>. Current GitHub account <span class="mono">Supreamth</span> has READ permission, so PR branches are pushed from fork <span class="mono">Supreamth/sig-data</span>.</td></tr>
+            <tr><td>GitHub source repo</td><td><span class="pill ok">canonical CI/CD</span></td><td><a href="https://github.com/Supreamth/sig-data">Supreamth/sig-data</a> is now the canonical CI/CD repository. <a href="https://github.com/GerardBrowne/sig-data">GerardBrowne/sig-data</a> is retained as read-only legacy/upstream reference only and is no longer used for CI/CD due to read-only permissions.</td></tr>
             <tr><td>Local repo</td><td><span class="pill ok">available</span></td><td><span class="mono">/root/projects/sig-data</span>. Current working branch for CI prep: <span class="mono">ci/v1-after-hygiene-checks</span>.</td></tr>
             <tr><td>Excluded worktree item</td><td><span class="pill warn">intentional</span></td><td><span class="mono">ev-solar-flow/</span> remains untracked and intentionally excluded from baseline PR #5.</td></tr>
           </tbody>
@@ -120,13 +120,11 @@
       </section>
 
       <section id="prs">
-        <h2>Open PRs</h2>
+        <h2>Canonical Supreamth repo PR</h2>
         <table>
-          <thead><tr><th>PR</th><th>Purpose</th><th>Status</th><th>Merge note</th></tr></thead>
+          <thead><tr><th>Branch / PR</th><th>Purpose</th><th>Status</th><th>Merge note</th></tr></thead>
           <tbody>
-            <tr><td><a href="https://github.com/GerardBrowne/sig-data/pull/5">#5</a></td><td>Capture V1.0 production baseline.</td><td><span class="pill warn">open</span></td><td>Merge this first so GitHub represents the current production app.</td></tr>
-            <tr><td><a href="https://github.com/GerardBrowne/sig-data/pull/6">#6</a></td><td>Remove tracked secret-looking manifests, improve ignore rules, and add this tracker.</td><td><span class="pill warn">open</span></td><td>Can merge independently, but if GitHub reports conflicts after #5 merge, rebase/refresh from main.</td></tr>
-            <tr><td><a href="https://github.com/GerardBrowne/sig-data/pull/7">#7</a></td><td>Add CI-only baseline validation workflow.</td><td><span class="pill warn">draft/open</span></td><td>Stacked for review. Merge after #5 and #6, then refresh if necessary.</td></tr>
+            <tr><td><a href="https://github.com/Supreamth/sig-data/compare/main...canonical/supreamth-cicd">canonical/supreamth-cicd</a></td><td>Consolidate the V1.0 production baseline, repository hygiene cleanup, public tracker, CI-only workflow, and canonical repo reference updates into <span class="mono">Supreamth/sig-data</span>.</td><td><span class="pill warn">pending PR</span></td><td>Open this PR against <span class="mono">Supreamth/sig-data:main</span>, wait for CI green, then merge. The old GerardBrowne PRs are legacy/read-only and no longer gate CI/CD.</td></tr>
           </tbody>
         </table>
       </section>
@@ -159,7 +157,7 @@
             <tr><td>Secret files were tracked before PR #6.</td><td>PR #6 prevents future tracking. If those files ever contained real credentials, rotate them separately because a normal PR does not rewrite Git history.</td></tr>
             <tr><td>No CI exists yet.</td><td>Next PR should be CI-only. Do not deploy until checks are green and staging deployment is proven.</td></tr>
             <tr><td>Staging house-map UI is experimental.</td><td>Keep it out of V1.0 baseline until telemetry mapping is complete.</td></tr>
-            <tr><td>Current GitHub account cannot push to upstream.</td><td>Use fork PRs from <span class="mono">Supreamth/sig-data</span> until upstream write access is granted.</td></tr>
+            <tr><td>Legacy <span class="mono">GerardBrowne/sig-data</span> is read-only for the current account.</td><td><span class="mono">Supreamth/sig-data</span> is now the canonical CI/CD repository. <span class="mono">GerardBrowne/sig-data</span> is no longer used for CI/CD due to read-only permissions and is kept as legacy/upstream reference only.</td></tr>
           </tbody>
         </table>
       </section>
@@ -200,8 +198,8 @@ xdg-open /root/projects/sig-data/docs/ci-cd-tracker.html
 # Print the path if xdg-open is unavailable
 echo /root/projects/sig-data/docs/ci-cd-tracker.html
 
-# Check current PRs
-gh pr list --repo GerardBrowne/sig-data --author Supreamth --state open
+# Check current PRs (canonical CI/CD repo)
+gh pr list --repo Supreamth/sig-data --author Supreamth --state open
 
 # Check live health without credentials
 curl -s https://sigen.sprees.net/api/health

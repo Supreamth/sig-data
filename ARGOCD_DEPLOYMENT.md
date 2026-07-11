@@ -39,7 +39,7 @@ This guide shows how to deploy the Sigen Solar Data monitoring system using Argo
 git init
 git add .
 git commit -m "Initial commit"
-git remote add origin https://github.com/yourusername/sig-data.git
+git remote add origin https://github.com/Supreamth/sig-data.git
 git push -u origin main
 ```
 
@@ -105,7 +105,7 @@ The setup script automatically detects your Git remote, but you can manually upd
 # In argocd/application-with-kustomize.yaml
 spec:
   source:
-    repoURL: https://github.com/yourusername/sig-data.git  # Update this
+    repoURL: https://github.com/Supreamth/sig-data.git  # Canonical CI/CD repo
 ```
 
 #### Configure Image Registry

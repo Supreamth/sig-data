@@ -29,7 +29,7 @@ A comprehensive Kubernetes-native application for monitoring Sigen solar inverte
 
 1.  **Clone the Repository:**
     ```bash
-    git clone [https://github.com/GerardBrowne/sig-data.git](https://github.com/GerardBrowne/sig-data.git)
+    git clone https://github.com/Supreamth/sig-data.git
     cd sig-data
     ```
 
