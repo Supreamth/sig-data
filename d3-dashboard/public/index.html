@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sigen Energy Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3fb950" stroke-width="2">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+      Sigen Energy
+    </h1>
+    <div class="header-right">
+      <div class="range-selector">
+        <button class="range-btn" data-range="30m">30m</button>
+        <button class="range-btn active" data-range="2h">2h</button>
+        <button class="range-btn" data-range="6h">6h</button>
+        <button class="range-btn" data-range="24h">24h</button>
+      </div>
+      <span id="last-updated">—</span>
+      <span id="status-badge">connecting</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="error-container"></div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card pv">
+        <div class="kpi-label">PV Power</div>
+        <div class="kpi-value" id="kpi-pv">—<span class="kpi-unit">kW</span></div>
+        <div class="kpi-sub" id="kpi-pv-day">Today: — kWh</div>
+      </div>
+      <div class="kpi-card load">
+        <div class="kpi-label">Load</div>
+        <div class="kpi-value" id="kpi-load">—<span class="kpi-unit">kW</span></div>
+        <div class="kpi-sub" id="kpi-load-sub">&nbsp;</div>
+      </div>
+      <div class="kpi-card batt">
+        <div class="kpi-label">Battery SOC</div>
+        <div class="kpi-value" id="kpi-soc">—<span class="kpi-unit">%</span></div>
+        <div class="kpi-sub" id="kpi-batt-sub">— kW</div>
+      </div>
+      <div class="kpi-card grid">
+        <div class="kpi-label">Grid Flow</div>
+        <div class="kpi-value" id="kpi-grid">—<span class="kpi-unit">kW</span></div>
+        <div class="kpi-sub" id="kpi-grid-sub">—</div>
+      </div>
+      <div class="kpi-card energy">
+        <div class="kpi-label">PV Today</div>
+        <div class="kpi-value" id="kpi-energy">—<span class="kpi-unit">kWh</span></div>
+        <div class="kpi-sub" id="kpi-energy-sub">&nbsp;</div>
+      </div>
+      <div class="kpi-card status">
+        <div class="kpi-label">Station</div>
+        <div class="kpi-value" id="kpi-status" style="font-size:18px">—</div>
+        <div class="kpi-sub" id="kpi-status-sub">&nbsp;</div>
+      </div>
+    </div>
+
+    <!-- Status strip -->
+    <div class="status-strip" id="status-strip">
+      <div class="status-item">
+        <div class="status-dot off" id="dot-grid"></div>
+        <div>
+          <div class="status-label">Grid</div>
+          <div class="status-value" id="val-grid">—</div>
+        </div>
+      </div>
+      <div class="status-item">
+        <div class="status-dot off" id="dot-station"></div>
+        <div>
+          <div class="status-label">Station Status</div>
+          <div class="status-value" id="val-station">—</div>
+        </div>
+      </div>
+      <div class="status-item" id="weather-strip" style="display:none">
+        <div class="status-dot on"></div>
+        <div>
+          <div class="status-label">Weather</div>
+          <div class="status-value" id="val-weather">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weather -->
+    <div class="weather-card" id="weather-card" style="display:none">
+      <div class="weather-temp" id="weather-temp">—°C</div>
+      <div class="weather-meta" id="weather-meta"></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-card wide">
+        <div class="chart-title">Power Flow</div>
+        <div id="chart-power"></div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3fb950"></div>PV</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#58a6ff"></div>Load</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#e3b341"></div>Grid</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#bc8cff"></div>Battery</div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Battery SOC</div>
+        <div id="chart-soc"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Battery Gauge</div>
+        <div id="chart-gauge" style="display:flex;justify-content:center"></div>
+      </div>
+    </div>
+
+    <!-- Optional Devices -->
+    <div class="optional-devices" id="optional-devices" style="display:none">
+      <div class="section-heading">Optional Devices</div>
+      <div class="device-grid" id="device-grid"></div>
+    </div>
+  </main>
+
+  <div class="tooltip" id="tooltip" style="display:none"></div>
+
+  <script src="/vendor/d3.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

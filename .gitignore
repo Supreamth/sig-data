@@ -9,9 +9,26 @@ venv/
 
 # Env & secrets
 .env
+.env.*
 sigen_token.json
+data/sigen_token.json
+data/tesla_oauth_token.json
+data/tesla_private_key.pem
+data/*.tmp
+data/*.lock
+
+# Agent/local artifacts
+.hermes/
+
+# Node/build artifacts
+node_modules/
+**/node_modules/
+dist/
+**/dist/
 
 # Kubernetes secrets (never commit configured secrets!)
+k8s/secret-sig-data.yaml
+k8s/ingress/cloudflare-tunnel-secret.yaml
 k8s/secret-sig-data-configured.yaml
 k8s/*-configured.yaml
 

@@ -1,0 +1,14 @@
+{
+  "name": "power-flow-dashboard",
+  "version": "1.0.0",
+  "description": "Standalone Sigen dashboard using flixlix/power-flow-card-plus visual card over the local InfluxDB API proxy",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0"
+  }
+}

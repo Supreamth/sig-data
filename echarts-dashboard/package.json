@@ -1,0 +1,16 @@
+{
+  "name": "echarts-dashboard",
+  "version": "1.0.0",
+  "description": "Apache ECharts energy monitoring dashboard for Sigen solar system",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "echarts": "^6.1.0",
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0",
+    "suncalc": "^1.9.0"
+  }
+}

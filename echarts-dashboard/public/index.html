@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sigen — Realtime Energy Flow</title>
+  <link rel="stylesheet" href="styles.css?v=202607111154">
+  <style>
+    /* ── Metric accent overrides ───────────────────────────── */
+    .metric.yield     { --accent: #06b6d4; }
+    .metric.grid-idle { --accent: #22c55e; }
+
+    /* ── Bottom area chart sizing ──────────────────────────── */
+    .chart-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 860px) { .chart-pair { grid-template-columns: 1fr; } }
+
+    .chart-card.source-card { min-height: 320px; }
+    .chart-card.gauge-card  { min-height: 320px; }
+
+    #flow-chart    { height: 100%; min-height: 560px; position: relative; }
+    #source-chart  { height: 260px; }
+    #trend-chart   { height: 390px; }
+    #devices-chart { height: 70px; }
+    #weather-actual-chart { height: 100%; min-height: 560px; }
+
+    .pf-card-plus {
+      position: relative;
+      min-height: 430px;
+      height: 100%;
+      overflow: hidden;
+      border: 1px solid rgba(145,164,189,.18);
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 50% 20%, rgba(53,208,127,.12), transparent 19rem),
+        radial-gradient(circle at 17% 62%, rgba(247,201,72,.12), transparent 15rem),
+        radial-gradient(circle at 82% 62%, rgba(180,124,255,.13), transparent 16rem),
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.012));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 20px 45px rgba(0,0,0,.22);
+    }
+    .pf-lines { position:absolute; inset:0; width:100%; height:100%; z-index:1; }
+    .pf-lines defs path { pointer-events:none; }
+    .pf-flow-line {
+      fill: none;
+      stroke: rgba(145,164,189,.18);
+      stroke-width: 5;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 5px rgba(0,0,0,.24));
+    }
+    .pf-flow-line.active {
+      stroke-width: 6;
+      opacity: .55;
+    }
+    .pf-flow-line.active.solar, .pf-flow-dot.active.solar { stroke: #4ade80; }
+    .pf-flow-line.active.home, .pf-flow-dot.active.home { stroke: #60a5fa; }
+    .pf-flow-line.active.import, .pf-flow-dot.active.import { stroke: #facc15; }
+    .pf-flow-line.active.export, .pf-flow-dot.active.export { stroke: #22c55e; }
+    .pf-flow-line.active.charge, .pf-flow-dot.active.charge { stroke: #c084fc; }
+    .pf-flow-line.active.discharge, .pf-flow-dot.active.discharge { stroke: #e879f9; }
+    .pf-flow-line.muted { stroke-dasharray: 6 13; opacity:.24; stroke-width:4; }
+    .pf-flow-dot {
+      fill: none;
+      stroke: rgba(145,164,189,.45);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 15 24;
+      animation: pf-flow 1.15s linear infinite;
+      opacity: 1;
+      filter: drop-shadow(0 0 9px currentColor);
+    }
+    .pf-flow-dot.active.solar { filter: drop-shadow(0 0 10px rgba(74,222,128,.95)); }
+    .pf-flow-dot.active.home { filter: drop-shadow(0 0 10px rgba(96,165,250,.95)); }
+    .pf-flow-dot.active.import { filter: drop-shadow(0 0 10px rgba(250,204,21,.95)); }
+    .pf-flow-dot.active.export { filter: drop-shadow(0 0 10px rgba(34,197,94,.95)); }
+    .pf-flow-dot.active.charge, .pf-flow-dot.active.discharge { filter: drop-shadow(0 0 10px rgba(192,132,252,.95)); }
+    .pf-flow-dot.muted { animation: none; opacity:.08; stroke-width:5; }
+    .pf-flow-label { display: none; }
+    @keyframes pf-flow { to { stroke-dashoffset: -39; } }
+
+    .pf-node-wrap { position:absolute; z-index:3; transform: translate(-50%, -50%); }
+    .pf-node-wrap.pf-solar { left:50%; top:16%; }
+    .pf-node-wrap.pf-grid { left:16%; top:60%; }
+    .pf-node-wrap.pf-home { left:50%; top:53%; }
+    .pf-node-wrap.pf-battery { left:84%; top:60%; }
+    .pf-node-wrap.pf-dc-charger { left:84%; top:84%; }
+    .pf-node {
+      min-width: 160px;
+      min-height: 104px;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 999px;
+      padding: 12px 18px 12px 14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      background: rgba(12,18,28,.84);
+      box-shadow: 0 18px 34px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.08);
+      backdrop-filter: blur(8px);
+    }
+    .pf-node.home { min-width: 185px; min-height: 118px; background: rgba(20,34,52,.92); }
+    .pf-node.solar { border-color: rgba(53,208,127,.45); }
+    .pf-node.grid { border-color: rgba(247,201,72,.45); }
+    .pf-node.battery { border-color: rgba(180,124,255,.48); }
+    .pf-node.dc-charger { border-color: rgba(34,211,238,.48); }
+    .pf-node.home { border-color: rgba(88,166,255,.48); }
+    .pf-icon { width: 48px; height: 48px; flex: 0 0 48px; display:grid; place-items:center; border-radius:50%; background: rgba(255,255,255,.08); font-size: 25px; }
+    .pf-node-body span, .pf-node-body small { display:block; color: var(--muted); }
+    .pf-node-body span { font-size: 11px; text-transform: uppercase; letter-spacing:.10em; }
+    .pf-node-body strong { display:block; color: var(--text); font-size: 25px; line-height:1.05; margin: 4px 0 2px; }
+    .pf-node-body small { font-size: 12px; }
+    .pf-soc-ring {
+      position:absolute;
+      right:-13px;
+      bottom:-11px;
+      width:54px;
+      height:54px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      background: conic-gradient(var(--battery) calc(var(--soc) * 1%), rgba(145,164,189,.18) 0), #101722;
+      box-shadow: 0 0 0 5px rgba(16,23,34,.9), 0 10px 22px rgba(0,0,0,.3);
+    }
+    .pf-soc-ring::after { content:''; position:absolute; inset:7px; border-radius:50%; background:#101722; }
+    .pf-soc-ring b { position:relative; z-index:1; font-size:13px; color:#edf4ff; }
+    .pf-summary {
+      position:absolute;
+      z-index:4;
+      left:18px;
+      top:14px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      color:#b8c7da;
+      font-size:12px;
+    }
+    .pf-summary span, .pf-chip {
+      border:1px solid rgba(145,164,189,.2);
+      border-radius:999px;
+      background: rgba(7,11,18,.42);
+      padding:7px 10px;
+    }
+    .pf-chip-row { position:absolute; z-index:4; left:18px; right:18px; bottom:14px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+    .pf-chip {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      color:#dbeafe;
+      font-size:12px;
+      line-height:1;
+    }
+    .pf-chip-icon {
+      width:28px;
+      height:28px;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
+      background: rgba(34,211,238,.13);
+      border:1px solid rgba(34,211,238,.36);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 16px rgba(34,211,238,.12);
+      font-size:16px;
+    }
+    .pf-chip-text { display:flex; flex-direction:column; gap:3px; }
+    .pf-chip b { color:#dbeafe; margin-right:0; }
+    .pf-chip small { color:#91a4bd; font-size:11px; }
+    .pf-chip.muted { opacity:.9; }
+    @media (max-width: 760px) {
+      #flow-chart { height: 620px; }
+      #weather-actual-chart { min-height: 620px; }
+      .pf-card-plus { min-height:590px; }
+      .pf-lines { display:none; }
+      .pf-node-wrap { position:static; transform:none; margin:12px auto; width:min(96%, 340px); }
+      .pf-node { border-radius:22px; width:100%; }
+      .pf-summary, .pf-chip-row { position:static; justify-content:center; padding:10px; }
+    }
+
+    .battery-details {
+      border: 1px solid #273347;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(180,124,255,.13), rgba(16,23,34,.9));
+      padding: 14px;
+      min-height: 230px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .battery-details h3 {
+      margin: 0 0 3px;
+      color: #edf4ff;
+      font-size: 15px;
+      letter-spacing: .01em;
+    }
+    .battery-details .detail-note {
+      margin: 0 0 10px;
+      color: #91a4bd;
+      font-size: 11px;
+    }
+    .battery-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+    }
+    .battery-detail {
+      background: rgba(7,11,18,.42);
+      border: 1px solid rgba(145,164,189,.18);
+      border-radius: 11px;
+      padding: 10px;
+    }
+    .battery-detail.wide { grid-column: 1 / -1; }
+    .battery-detail span {
+      display: block;
+      color: #91a4bd;
+      font-size: 10px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .battery-detail strong {
+      color: #edf4ff;
+      font-size: 18px;
+      font-weight: 850;
+    }
+    .battery-detail small {
+      display: block;
+      color: #6b8099;
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    .kpi-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 4px 0 12px;
+    }
+    .kpi { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 110px;
+      background: rgba(255,255,255,.03); border: 1px solid #273347; border-radius: 10px;
+      padding: 10px 8px 8px; }
+    .kpi span  { font-size: 11px; color: #91a4bd; letter-spacing: .04em; text-transform: uppercase; }
+    .kpi strong{ font-size: 22px; font-weight: 800; color: #edf4ff; line-height: 1.1; margin: 4px 0 2px; }
+    .kpi small  { font-size: 11px; color: #6b8099; }
+
+    /* ── History Date Toolbar ──────────────────────────── */
+    .history-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      margin-bottom: 12px;
+      background: rgba(7,11,18,.55);
+      border: 1px solid rgba(145,164,189,.18);
+      border-radius: 14px;
+      flex-wrap: wrap;
+    }
+    .history-toolbar-label {
+      font-size: 11px;
+      color: #91a4bd;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+    }
+    .hist-btn {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(145,164,189,.22);
+      border-radius: 8px;
+      color: #edf4ff;
+      cursor: pointer;
+      font-size: 15px;
+      line-height: 1;
+      padding: 5px 11px;
+    }
+    .hist-btn:hover { background: rgba(255,255,255,.13); }
+    .hist-today { color: #35d07f; border-color: rgba(53,208,127,.35); font-size: 12px; }
+    .hist-date-input {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(145,164,189,.22);
+      border-radius: 8px;
+      color: #edf4ff;
+      font-size: 13px;
+      padding: 5px 10px;
+      color-scheme: dark;
+    }
+    .history-live-note {
+      font-size: 11px;
+      color: #6b8099;
+      margin-left: auto;
+      font-style: italic;
+    }
+
+    .dc-stat-wrap { margin-top: 2px; }
+    .dc-stat-title {
+      font-size: 10px;
+      color: rgba(34,211,238,.55);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 2px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────── -->
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Apache ECharts · Sigen APAC · InfluxDB</p>
+      <h1 data-i18n="app.title">Sigen Realtime Energy Flow</h1>
+    </div>
+    <div class="toolbar">
+      <div class="language-toggle" aria-label="Language selector">
+        <button id="lang-th" class="lang-btn active" data-lang="th">TH</button>
+        <button id="lang-en" class="lang-btn" data-lang="en">EN</button>
+      </div>
+      <span class="realtime-note" data-i18n="top.realtime">เรียลไทม์ · รีเฟรชอัตโนมัติ 15 วินาที</span>
+      <span id="last-updated">กำลังเชื่อมต่อ…</span>
+      <span id="status-badge" class="pending">syncing</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="error-container"></div>
+
+    <!-- ── Dashboard grid ─────────────────────────────────── -->
+    <div class="dashboard-grid">
+
+      <!-- ── System Health & Data Quality · top of dashboard ── -->
+      <section class="chart-card wide health-card" id="health-card">
+        <div class="card-head">
+          <h2 data-i18n="health.title">สุขภาพระบบและคุณภาพข้อมูล</h2>
+          <p data-i18n="health.subtitle">สถานะ Collector, ความสดของข้อมูล และสถานะสถานี</p>
+        </div>
+        <div class="health-grid">
+          <article class="health-item">
+            <span class="health-label" data-i18n="health.dataStatus">สถานะข้อมูล</span>
+            <strong id="health-status">—</strong>
+            <small id="health-checked-at">—</small>
+          </article>
+          <article class="health-item">
+            <span class="health-label" data-i18n="health.energyAge">อายุข้อมูลพลังงาน</span>
+            <strong id="health-energy-age">—</strong>
+            <small id="health-energy-ts">—</small>
+          </article>
+          <article class="health-item">
+            <span class="health-label">Collector</span>
+            <strong id="health-collector-status">—</strong>
+            <small id="health-collector-failures">—</small>
+          </article>
+          <article class="health-item">
+            <span class="health-label">Raw Snapshots</span>
+            <strong id="health-raw-age">—</strong>
+            <small id="health-raw-ts">—</small>
+          </article>
+          <article class="health-item">
+            <span class="health-label" data-i18n="health.stationInfo">ข้อมูลสถานี</span>
+            <strong id="health-station-name">—</strong>
+            <small id="health-station-capacity">—</small>
+          </article>
+        </div>
+      </section>
+
+      <!-- ── Status strip ───────────────────────────────── -->
+      <section class="status-strip">
+        <div><b id="grid-dot" class="dot off"></b><span data-i18n="status.grid">Grid</span><strong id="grid-state">—</strong></div>
+        <div><b id="station-dot" class="dot off"></b><span data-i18n="status.station">Station</span><strong id="station-state">—</strong></div>
+        <div><b class="dot on"></b><span data-i18n="status.db">เวลาในฐานข้อมูล</span><strong id="db-ts">—</strong></div>
+      </section>
+
+      <!-- ── Today Recommendation · compact decision helper ── -->
+      <section class="chart-card wide today-recommendation-card" id="today-recommendation-card">
+        <div class="today-rec-head">
+          <div>
+            <p class="eyebrow" data-i18n="todayRec.eyebrow">Weather + Sigen Telemetry</p>
+            <h2 data-i18n="todayRec.title">คำแนะนำวันนี้</h2>
+            <p id="today-rec-title">กำลังวิเคราะห์ forecast และข้อมูลพลังงานจริง…</p>
+          </div>
+          <div class="today-rec-updated" id="today-rec-updated">—</div>
+        </div>
+        <div class="today-rec-grid">
+          <article><span data-i18n="todayRec.pvOutlook">PV Outlook</span><strong id="today-rec-outlook">—</strong></article>
+          <article><span data-i18n="todayRec.bestWindow">ช่วงเหมาะใช้ไฟ</span><strong id="today-rec-window">—</strong></article>
+          <article><span data-i18n="todayRec.batteryStrategy">Battery Strategy</span><strong id="today-rec-battery">—</strong></article>
+          <article><span data-i18n="todayRec.dcCharger">DC Charger</span><strong id="today-rec-dc">—</strong></article>
+          <article><span data-i18n="todayRec.confidence">Confidence</span><strong id="today-rec-confidence">—</strong></article>
+        </div>
+        <div class="today-rec-body">
+          <ul id="today-rec-bullets"><li>—</li></ul>
+          <div class="today-rec-reason" id="today-rec-reason">—</div>
+        </div>
+      </section>
+
+      <!-- TOP METRICS · all in one row ───────────────────── -->
+      <section class="top-metric-row" aria-label="Live energy metrics">
+        <article class="metric solar">
+          <span data-i18n="metric.pvNow">PV ตอนนี้</span>
+          <strong id="m-pv">—</strong>
+          <small id="m-pv-sub" data-i18n="metric.todayKwh">วันนี้ — kWh</small>
+        </article>
+        <article class="metric load">
+          <span data-i18n="metric.homeLoad">โหลดบ้าน</span>
+          <strong id="m-load">—</strong>
+          <small data-i18n="metric.currentDemand">โหลดปัจจุบัน</small>
+        </article>
+        <article class="metric grid">
+          <span data-i18n="metric.gridFlow">การไหล Grid</span>
+          <strong id="m-grid">—</strong>
+          <small id="m-grid-sub">—</small>
+        </article>
+        <article class="metric grid-idle">
+          <span data-i18n="metric.gridIdle">เวลาไม่ใช้ Grid</span>
+          <strong id="m-grid-idle">—</strong>
+          <small id="m-grid-idle-sub" data-i18n="metric.gridIdleSub">ไม่ใช้ Grid วันนี้</small>
+        </article>
+        <article class="metric grid-cost">
+          <span data-i18n="metric.gridCost">ค่าไฟวันนี้</span>
+          <strong id="m-grid-cost">—</strong>
+          <small id="m-grid-cost-sub">—</small>
+        </article>
+        <article class="metric battery">
+          <span data-i18n="metric.batterySoc">Battery SOC</span>
+          <strong id="m-soc">—</strong>
+          <small id="m-batt-sub">—</small>
+        </article>
+        <article class="metric weather">
+          <span data-i18n="metric.weather">อากาศ</span>
+          <strong id="m-weather">—</strong>
+          <small id="m-weather-sub">—</small>
+        </article>
+        <article class="metric yield">
+          <span data-i18n="metric.selfUse">Self-use</span>
+          <strong id="m-self-use">—</strong>
+          <small id="m-self-use-sub">Self-consumption</small>
+        </article>
+      </section>
+
+
+
+      <!-- ── Energy Summary & Optimization ───────────────── -->
+      <section class="chart-card wide summary-optimization-card" id="summary-optimization-card">
+        <div class="card-head summary-head">
+          <div>
+            <h2 data-i18n="summary.title">สรุปพลังงาน · คำแนะนำ · Energy Optimization</h2>
+            <p id="summary-period-subtitle" data-i18n="summary.subtitle">คำนวณจากข้อมูลจริงทั้งหมดใน InfluxDB ตามช่วงเวลาที่เลือก</p>
+          </div>
+          <div class="summary-period-tabs" role="tablist" aria-label="Summary period selector">
+            <button class="summary-period-btn active" data-summary-period="day" data-i18n="summary.period.day">วันนี้</button>
+            <button class="summary-period-btn" data-summary-period="week" data-i18n="summary.period.week">สัปดาห์</button>
+            <button class="summary-period-btn" data-summary-period="month" data-i18n="summary.period.month">เดือน</button>
+            <button class="summary-period-btn" data-summary-period="year" data-i18n="summary.period.year">ปี</button>
+            <button class="summary-period-btn" data-summary-period="all" data-i18n="summary.period.all">ทั้งหมด</button>
+          </div>
+        </div>
+        <div class="summary-quality-line" id="summary-quality-line" data-i18n="summary.loading">กำลังโหลดสรุปพลังงาน…</div>
+        <div class="summary-kpi-grid">
+          <article class="summary-kpi solar"><span data-i18n="summary.kpi.pv">ผลิต Solar</span><strong id="sum-pv-kwh">—</strong><small id="sum-pv-sub">kWh</small></article>
+          <article class="summary-kpi load"><span data-i18n="summary.kpi.load">ใช้ไฟบ้าน</span><strong id="sum-load-kwh">—</strong><small>Home consumption</small></article>
+          <article class="summary-kpi grid"><span data-i18n="summary.kpi.import">ซื้อ Grid</span><strong id="sum-grid-import">—</strong><small id="sum-grid-cost-sub">—</small></article>
+          <article class="summary-kpi export"><span data-i18n="summary.kpi.export">ส่งออก</span><strong id="sum-grid-export">—</strong><small>Solar surplus</small></article>
+          <article class="summary-kpi cost"><span data-i18n="summary.kpi.cost">ค่าไฟ</span><strong id="sum-grid-cost">—</strong><small>ที่ rate ฿4.22/kWh</small></article>
+          <article class="summary-kpi self"><span data-i18n="summary.kpi.self">Self-use</span><strong id="sum-self-use">—</strong><small id="sum-self-suff">—</small></article>
+          <article class="summary-kpi score"><span data-i18n="summary.kpi.score">Optimization Score</span><strong id="sum-opt-score">—</strong><small id="sum-opt-status">—</small></article>
+        </div>
+        <div class="summary-body-grid">
+          <div class="summary-optimization-panel">
+            <div class="summary-section-title" data-i18n="summary.opt.title">Energy Optimization</div>
+            <div class="summary-opt-grid">
+              <div><span data-i18n="summary.opt.solarWindow">ช่วงเหมาะใช้ไฟหนัก</span><strong id="sum-best-solar-window">—</strong><small id="sum-solar-surplus">—</small></div>
+              <div><span data-i18n="summary.opt.importWindow">ช่วงซื้อไฟสูงสุด</span><strong id="sum-import-peak-window">—</strong><small id="sum-import-peak-sub">—</small></div>
+              <div><span data-i18n="summary.opt.saving">โอกาสประหยัด</span><strong id="sum-potential-saving">—</strong><small id="sum-shiftable-load">—</small></div>
+              <div><span data-i18n="summary.opt.battery">Battery Strategy</span><strong id="sum-battery-full">—</strong><small id="sum-export-after-full">—</small></div>
+            </div>
+            <div id="summary-energy-chart" class="summary-energy-chart"></div>
+          </div>
+          <div class="summary-recommendation-panel">
+            <div class="summary-section-title" data-i18n="summary.recs.title">คำแนะนำจากข้อมูลจริง</div>
+            <div id="summary-actions" class="summary-actions">
+              <div class="summary-action-empty" data-i18n="summary.recs.loading">กำลังวิเคราะห์ข้อมูล…</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- POWER FLOW · same width as System Health ───────── -->
+      <section class="center-stage">
+        <div class="chart-card pf-stage">
+          <div class="card-head">
+            <h2 data-i18n="flow.title">Power Flow</h2>
+            <p data-i18n="flow.subtitle">PV, โหลด, Grid และ Battery — อัปเดตใกล้เรียลไทม์</p>
+          </div>
+          <div id="flow-chart" class="chart tall"></div>
+        </div>
+      </section>
+
+      <!-- BOTTOM AREA · full width ───────────────────────── -->
+      <div class="bottom-area">
+
+        <!-- ── History Date Toolbar ──────────────────────────── -->
+        <div class="history-toolbar">
+          <span class="history-toolbar-label" data-i18n="history.title">วันที่ย้อนหลัง</span>
+          <button id="hist-prev" class="hist-btn" title="Previous day">&#8249;</button>
+          <input type="date" id="hist-date" class="hist-date-input">
+          <button id="hist-next" class="hist-btn" title="Next day">&#8250;</button>
+          <button id="hist-today" class="hist-btn hist-today" data-i18n="common.today">วันนี้</button>
+          <span class="history-live-note" data-i18n="history.note">การ์ดเรียลไทม์ (KPI · Power Flow · Battery Details) ยังเป็นข้อมูลสด</span>
+        </div>
+
+        <!-- ── Weather VS Actual power ──────────────────────── -->
+        <section class="chart-card wide weather-actual-card">
+          <div class="card-head">
+            <h2 data-i18n="weatherActual.title">อากาศ VS กำลังผลิต PV จริง</h2>
+            <p id="weather-actual-subtitle">PV1–PV4 actual string power (stacked bars) · GHI line · cloud cover. Forecast extends ahead; bars show real Sigen data only.</p>
+          </div>
+          <div id="weather-actual-chart" class="chart tall"></div>
+        </section>
+
+
+        <!-- ── Energy Sources + Battery details ───────────── -->
+        <div class="chart-pair">
+          <article class="chart-card source-card">
+            <div class="card-head">
+              <h2 id="source-title" data-i18n="source.title">แหล่งพลังงานวันนี้</h2>
+              <p id="source-subtitle" data-i18n="source.subtitle">วันนี้ / 00:00 → ข้อมูลล่าสุด</p>
+            </div>
+            <div id="source-chart" class="chart"></div>
+          </article>
+          <article class="chart-card gauge-card">
+            <div class="card-head">
+              <h2 data-i18n="battery.title">รายละเอียด Battery</h2>
+              <p data-i18n="battery.subtitle">ค่า Battery รวมจาก telemetry ปัจจุบันของ Sigen</p>
+            </div>
+            <aside class="battery-details" aria-label="Aggregate battery details">
+              <div>
+                <h3 data-i18n="battery.title">รายละเอียด Battery</h3>
+                <p class="detail-note" data-i18n="battery.note">Gauge ย้ายไปที่ Battery node ใน Power Flow</p>
+              </div>
+              <div class="battery-detail-grid">
+                <div class="battery-detail">
+                  <span data-i18n="battery.capacity">ความจุรวม</span>
+                  <strong id="battery-capacity">—</strong>
+                </div>
+                <div class="battery-detail">
+                  <span>SOC</span>
+                  <strong id="battery-detail-soc">—</strong>
+                </div>
+                <div class="battery-detail">
+                  <span data-i18n="battery.stored">พลังงานคงเหลือโดยประมาณ</span>
+                  <strong id="battery-stored">—</strong>
+                </div>
+                <div class="battery-detail">
+                  <span data-i18n="battery.power">กำลังปัจจุบัน</span>
+                  <strong id="battery-power-detail">—</strong>
+                  <small id="battery-mode-detail">—</small>
+                </div>
+                <div class="battery-detail wide">
+                  <span data-i18n="battery.time">เวลาประมาณ</span>
+                  <strong id="battery-est-time">—</strong>
+                  <small id="battery-est-time-sub">based on current power</small>
+                </div>
+              </div>
+            </aside>
+          </article>
+        </div>
+
+        <!-- ── Battery Full Time ──────────────────────────── -->
+        <section class="chart-card wide battery-full-time-card">
+          <div class="card-head">
+            <h2 data-i18n="bft.title">เวลา Battery เต็ม</h2>
+            <p>Days battery reached 100% SOC — time of first full charge, from sunrise, and from PV start</p>
+          </div>
+          <div class="kpi-row">
+            <div class="kpi bft-kpi-full">
+              <span data-i18n="bft.first">100% ครั้งแรกวันนี้</span>
+              <strong id="bft-today-time">—</strong>
+              <small id="bft-today-sub" data-i18n="common.localTime">เวลาท้องถิ่น</small>
+            </div>
+            <div class="kpi">
+              <span data-i18n="bft.sunrise">จาก Sunrise</span>
+              <strong id="bft-from-sunrise">—</strong>
+              <small data-i18n="bft.afterSunrise">หลัง sunrise</small>
+            </div>
+            <div class="kpi">
+              <span data-i18n="bft.pvStart">จากเริ่ม PV</span>
+              <strong id="bft-from-pv">—</strong>
+              <small data-i18n="bft.afterPv">หลังเริ่ม PV</small>
+            </div>
+            <div class="kpi">
+              <span data-i18n="common.status">สถานะ</span>
+              <strong id="bft-status">—</strong>
+              <small id="bft-samples">—</small>
+            </div>
+          </div>
+          <div id="battery-full-time-chart" style="height:220px;width:100%;"></div>
+          <div id="battery-full-history" class="bft-history-list"></div>
+        </section>
+
+        <!-- ── Grid Cost & Solar Value Trend ────────────── -->
+        <section class="chart-card wide">
+          <div class="card-head">
+            <h2 data-i18n="gridCost.title">แนวโน้มค่าไฟ Grid และมูลค่า Solar</h2>
+            <p id="grid-cost-subtitle" data-i18n="gridCost.subtitle">ค่าไฟ Grid รายวัน, มูลค่า Solar โดยประมาณ และพลังงาน</p>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button class="grid-cost-range active" data-grid-cost-days="7">7d</button>
+            <button class="grid-cost-range" data-grid-cost-days="30">30d</button>
+          </div>
+          <div id="grid-cost-chart" class="chart tall"></div>
+        </section>
+
+        <!-- ── Battery SOC Trend ──────────────────────────── -->
+        <section class="chart-card wide">
+          <div class="card-head">
+            <h2 data-i18n="trend.title">แนวโน้ม Battery SOC</h2>
+            <p id="trend-subtitle" data-i18n="trend.subtitle">ข้อมูลย้อนหลัง 24 ชั่วโมงจาก InfluxDB</p>
+          </div>
+          <div id="trend-chart" class="chart tall"></div>
+        </section>
+
+        <!-- ── EV Energy ─────────────────────────────────── -->
+        <section class="ev-energy-section">
+          <article class="chart-card dc-charger-card" id="dc-charger-card" data-state="none">
+            <div class="dc-charger-inner">
+              <div class="dc-charger-header">
+                <div>
+                  <h2 data-i18n="dc.title">DC Charger</h2>
+                  <p class="dc-charger-route" data-i18n="dc.route">Home / Load Bus &#8594; DC Charger</p>
+                </div>
+                <span class="dc-charger-badge" id="dc-charger-badge" data-badge="none" data-i18n="common.noData">ไม่มีข้อมูล</span>
+              </div>
+              <div class="dc-charger-main">
+                <div class="dc-charger-icon-wrap">&#128268;</div>
+                <div>
+                  <div class="dc-charger-values">
+                    <strong class="dc-charger-kw" id="dc-charger-kw">—</strong>
+                    <span class="dc-charger-kw-unit">kW</span>
+                  </div>
+                  <p class="dc-charger-state-text" id="dc-charger-state-text" data-i18n="dc.noTelemetry">ไม่มีข้อมูล charger</p>
+                </div>
+              </div>
+              <div class="dc-charger-chips">
+                <span class="dc-footer-chip" data-i18n="dc.loadSide">อุปกรณ์ฝั่งโหลด</span>
+                <span class="dc-footer-chip" data-i18n="dc.realTelemetry">ข้อมูลจริง ev_power</span>
+              </div>
+              <div class="dc-cost-grid">
+                <div class="dc-cost-col">
+                  <div class="dc-cost-label" id="dc-cost-session-label" data-i18n="dc.lastCharge">ชาร์จล่าสุด</div>
+                  <div class="dc-cost-kwh" id="dc-cost-session-kwh">—</div>
+                  <div class="dc-cost-thb" id="dc-cost-session-thb">—</div>
+                </div>
+                <div class="dc-cost-col">
+                  <div class="dc-cost-label" data-i18n="dc.month">เดือนนี้</div>
+                  <div class="dc-cost-kwh" id="dc-cost-month-kwh">—</div>
+                  <div class="dc-cost-thb" id="dc-cost-month-thb">—</div>
+                </div>
+                <div class="dc-cost-col">
+                  <div class="dc-cost-label" data-i18n="dc.total">รวมที่บันทึก</div>
+                  <div class="dc-cost-kwh" id="dc-cost-total-kwh">—</div>
+                  <div class="dc-cost-thb" id="dc-cost-total-thb">—</div>
+                </div>
+                <div class="dc-cost-rate" data-i18n="dc.rate">Rate: &#3647;4.22/kWh</div>
+              </div>
+              <div class="dc-stat-wrap">
+                <div class="dc-stat-title" data-i18n="dc.stat">สถิติ DC Charging</div>
+                <div id="dc-charging-stat-chart" style="height:110px;width:100%;"></div>
+              </div>
+              <div class="dc-charger-meta">
+                <span class="dc-charger-kwh" id="dc-charger-kwh"></span>
+              </div>
+            </div>
+          </article>
+
+          <article class="chart-card tesla-card" id="tesla-card" data-state="none">
+            <div class="tesla-card-inner">
+              <div class="tesla-header">
+                <div>
+                  <h2>Tesla EV</h2>
+                  <p class="tesla-route">Vehicle charge state</p>
+                </div>
+                <span class="tesla-badge" id="tesla-badge" data-badge="none">No data</span>
+              </div>
+
+              <div class="tesla-main">
+                <div class="tesla-battery-gauge" id="tesla-battery-gauge" style="--soc:0">
+                  <strong id="tesla-battery-level">—</strong>
+                  <span>Battery</span>
+                </div>
+                <div class="tesla-main-values">
+                  <div>
+                    <span>Charging</span>
+                    <strong id="tesla-charging-state">No Tesla data yet</strong>
+                  </div>
+                  <div>
+                    <span>Power</span>
+                    <strong id="tesla-charger-power">—</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tesla-detail-grid">
+                <div class="tesla-detail">
+                  <span>Limit</span>
+                  <strong id="tesla-charge-limit">—</strong>
+                </div>
+                <div class="tesla-detail">
+                  <span>Added</span>
+                  <strong id="tesla-energy-added">—</strong>
+                </div>
+                <div class="tesla-detail">
+                  <span>Time to full</span>
+                  <strong id="tesla-time-full">—</strong>
+                </div>
+                <div class="tesla-detail">
+                  <span>Range</span>
+                  <strong id="tesla-range">—</strong>
+                </div>
+                <div class="tesla-detail">
+                  <span>DC session</span>
+                  <strong id="tesla-session-kwh">—</strong>
+                  <small id="tesla-session-cost">—</small>
+                </div>
+                <div class="tesla-detail">
+                  <span>Health</span>
+                  <strong id="tesla-health">—</strong>
+                  <small id="tesla-health-failures">—</small>
+                </div>
+              </div>
+
+              <div class="tesla-footer">
+                <span id="tesla-last-seen">Last seen —</span>
+                <span id="tesla-vin-suffix"></span>
+              </div>
+            </div>
+          </article>
+        </section>
+
+      </div><!-- /bottom-area -->
+    </div><!-- /dashboard-grid -->
+  </main>
+
+  <script src="/vendor/echarts.min.js"></script>
+  <script src="app.js?v=202607111154"></script>
+</body>
+</html>

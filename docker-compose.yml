@@ -5,6 +5,7 @@ services:
     image: influxdb:2.7
     profiles: ["stack"]
     container_name: influxdb
+    restart: unless-stopped
     ports:
       - "8086:8086"
     environment:
@@ -22,6 +23,7 @@ services:
     image: grafana/grafana:10.4.9
     profiles: ["stack"]
     container_name: grafana
+    restart: unless-stopped
     depends_on:
       - influxdb
     ports:
@@ -39,6 +41,53 @@ services:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+  d3-dashboard:
+    build: ./d3-dashboard
+    profiles: ["stack"]
+    container_name: d3-dashboard
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    env_file: .env
+    environment:
+      INFLUXDB_URL: http://influxdb:8086
+    ports:
+      - "3100:3100"
+
+  echarts-dashboard:
+    build: ./echarts-dashboard
+    profiles: ["stack"]
+    container_name: echarts-dashboard
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    env_file: .env
+    environment:
+      INFLUXDB_URL: http://influxdb:8086
+      TELEGRAM_REPORT_ENABLED: ${TELEGRAM_REPORT_ENABLED:-true}
+      TELEGRAM_REPORT_INTERVAL_MS: ${TELEGRAM_REPORT_INTERVAL_MS:-3600000}
+      TELEGRAM_REPORT_STARTUP_DELAY_MS: ${TELEGRAM_REPORT_STARTUP_DELAY_MS:-60000}
+      TELEGRAM_PARSE_MODE: ${TELEGRAM_PARSE_MODE:-}
+      DASHBOARD_AUTH_ENABLED: ${DASHBOARD_AUTH_ENABLED:-false}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+    ports:
+      - "127.0.0.1:3200:3200"
+
+  power-flow-dashboard:
+    build: ./power-flow-dashboard
+    profiles: ["stack"]
+    container_name: power-flow-dashboard
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    env_file: .env
+    environment:
+      INFLUXDB_URL: http://influxdb:8086
+      POWER_FLOW_DASHBOARD_PORT: 3300
+    ports:
+      - "3300:3300"
 
   sig-data:
     build: .
@@ -58,9 +107,130 @@ services:
       INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-devtoken}
       INFLUXDB_ORG: ${INFLUXDB_ORG:-sigorg}
       INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-energy_metrics}
+      SLEEP_INTERVAL: ${SLEEP_INTERVAL:-15}
     volumes:
       - ./data:/data
     restart: unless-stopped
+
+  sigen-openapi-pv-collector:
+    build: .
+    profiles: ["stack"]
+    container_name: sigen-openapi-pv-collector
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    command: ["python", "sigen_openapi_pv_collector.py"]
+    environment:
+      SIGEN_APP_KEY: ${SIGEN_APP_KEY:-}
+      SIGEN_APP_SECRET: ${SIGEN_APP_SECRET:-}
+      SIGEN_REGION: ${SIGEN_REGION:-apac}
+      SIGEN_OPENAPI_BASE_URL: ${SIGEN_OPENAPI_BASE_URL:-}
+      SIGEN_SYSTEM_ID: ${SIGEN_SYSTEM_ID:-}
+      SIGEN_DEVICE_SN: ${SIGEN_DEVICE_SN:-}
+      SIGEN_OPENAPI_PV_INTERVAL: ${SIGEN_OPENAPI_PV_INTERVAL:-300}
+      SIGEN_ENABLE_WEB_FALLBACK: ${SIGEN_ENABLE_WEB_FALLBACK:-false}
+      SIGEN_WEB_BASE_URL: ${SIGEN_WEB_BASE_URL:-https://api-apac.sigencloud.com}
+      SIGEN_WEB_ACCESS_TOKEN: ${SIGEN_WEB_ACCESS_TOKEN:-}
+      SIGEN_WEB_COOKIE: ${SIGEN_WEB_COOKIE:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-devtoken}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-sigorg}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-energy_metrics}
+
+  mysigen-pv-string-collector:
+    build: .
+    profiles: ["stack"]
+    container_name: mysigen-pv-string-collector
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    command: ["python", "mysigen_pv_string_collector.py"]
+    env_file: .env
+    environment:
+      SIGEN_TOKEN_FILE: /data/sigen_token.json
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-devtoken}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-sigorg}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-energy_metrics}
+      MYSIGEN_PV_STRING_INTERVAL: ${MYSIGEN_PV_STRING_INTERVAL:-60}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/data
+
+  mysigen-battery-module-collector:
+    build: .
+    profiles: ["stack"]
+    container_name: mysigen-battery-module-collector
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    command: ["python", "mysigen_battery_module_collector.py"]
+    env_file: .env
+    environment:
+      SIGEN_TOKEN_FILE: /data/sigen_token.json
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-devtoken}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-sigorg}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-energy_metrics}
+      MYSIGEN_BATTERY_MODULE_INTERVAL: ${MYSIGEN_BATTERY_MODULE_INTERVAL:-300}
+      MYSIGEN_BATTERY_SNS: ${MYSIGEN_BATTERY_SNS:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./data:/data
+
+  tesla-fleet-collector:
+    build: .
+    profiles: ["stack"]
+    container_name: tesla-fleet-collector
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    command: ["python", "tesla_fleet_collector.py"]
+    env_file: .env
+    environment:
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-devtoken}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-sigorg}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-energy_metrics}
+      TESLA_API_HOST: ${TESLA_API_HOST:-https://fleet-api.prd.eu.vn.cloud.tesla.com}
+      TESLA_TOKEN_FILE: /data/tesla_oauth_token.json
+      TESLA_CLIENT_ID: ${TESLA_CLIENT_ID:-}
+      TESLA_CLIENT_SECRET: ${TESLA_CLIENT_SECRET:-}
+      TESLA_TOKEN_URL: ${TESLA_TOKEN_URL:-https://auth.tesla.com/oauth2/v3/token}
+      TESLA_REFRESH_SKEW_SECONDS: ${TESLA_REFRESH_SKEW_SECONDS:-300}
+      TESLA_OAUTH_SCOPE: ${TESLA_OAUTH_SCOPE:-openid offline_access vehicle_device_data}
+      TESLA_VIN: ${TESLA_VIN:-}
+      TESLA_WAKE_ALLOWED: ${TESLA_WAKE_ALLOWED:-false}
+      TESLA_POLL_IDLE_SECONDS: ${TESLA_POLL_IDLE_SECONDS:-900}
+      TESLA_POLL_CHARGING_SECONDS: ${TESLA_POLL_CHARGING_SECONDS:-60}
+    volumes:
+      - ./data:/data
+
+  mysigen-realtime-collector:
+    build: .
+    profiles: ["stack"]
+    container_name: mysigen-realtime-collector
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    command: ["python", "mysigen_realtime_collector.py"]
+    env_file: .env
+    environment:
+      SIGEN_USERNAME: ${SIGEN_USERNAME}
+      SIGEN_TRANSFORMED_PASSWORD: ${SIGEN_TRANSFORMED_PASSWORD}
+      SIGEN_STATION_ID: ${SIGEN_STATION_ID:-}
+      SIGEN_BASE_URL: ${SIGEN_BASE_URL:-https://api-eu.sigencloud.com}
+      MYSIGEN_REALTIME_INTERVAL: ${MYSIGEN_REALTIME_INTERVAL:-15}
+      MYSIGEN_STATION_INFO_INTERVAL: ${MYSIGEN_STATION_INFO_INTERVAL:-3600}
+      SIGEN_TOKEN_FILE: /data/sigen_token.json
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN:-devtoken}
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-sigorg}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-energy_metrics}
+    volumes:
+      - ./data:/data
 
 volumes:
   influxdb-data:
