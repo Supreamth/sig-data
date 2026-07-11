@@ -196,6 +196,40 @@ docker compose -f "${RELEASE_COMPOSE}" config >/dev/null
 log "Building staging service: ${STAGING_SERVICE}"
 docker compose -f "${RELEASE_COMPOSE}" build "${STAGING_SERVICE}"
 
+# ---------------------------------------------------------------------------
+# Staging-only container adoption/replacement.
+#
+# The first real deploy from a fresh compose project collides with the existing
+# live/legacy staging container that was created manually (or by an earlier
+# project) under the same fixed name `echarts-dashboard-staging`. `docker
+# compose up` refuses to create a container whose name is already in use, so we
+# explicitly retire the pre-existing staging container first.
+#
+# This is safe and bounded:
+#   * It only ever targets the single, fixed name ${STAGING_SERVICE} — never a
+#     pattern, glob, prefix, or `docker ps` filter that could match siblings.
+#   * It refuses to act unless `docker inspect` reports the container's name is
+#     EXACTLY /${STAGING_SERVICE}. Any mismatch aborts the deploy untouched.
+#   * It is staging-only (this whole script is), and the deploy immediately
+#     rebuilds the service from the new compose project and health-checks it.
+# ---------------------------------------------------------------------------
+if docker inspect "${STAGING_SERVICE}" >/dev/null 2>&1; then
+  EXISTING_NAME="$(docker inspect --format '{{.Name}}' "${STAGING_SERVICE}")"
+  if [ "${EXISTING_NAME}" = "/${STAGING_SERVICE}" ]; then
+    log "Existing staging container '${STAGING_SERVICE}' found (name '${EXISTING_NAME}'); replacing it."
+    log "Stopping staging container: ${STAGING_SERVICE}"
+    docker stop "${STAGING_SERVICE}" >/dev/null
+    log "Removing staging container: ${STAGING_SERVICE}"
+    docker rm "${STAGING_SERVICE}" >/dev/null
+  else
+    log "ERROR: container '${STAGING_SERVICE}' exists but its name is '${EXISTING_NAME}',"
+    log "       not the expected '/${STAGING_SERVICE}'. Refusing to stop/remove it."
+    exit 1
+  fi
+else
+  log "No pre-existing '${STAGING_SERVICE}' container; nothing to replace."
+fi
+
 log "Starting staging service: ${STAGING_SERVICE}"
 docker compose -f "${RELEASE_COMPOSE}" up -d "${STAGING_SERVICE}"
 

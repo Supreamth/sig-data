@@ -83,11 +83,26 @@ Only after a clean dry-run, re-run with `dry_run: false`. The script then:
 2. Copies the workspace into it via `rsync`, excluding `.git`, `node_modules`,
    `dist`, and `.hermes`.
 3. Validates the staging compose config.
-4. Builds and starts **only** `echarts-dashboard-staging`.
-5. Health-checks `http://127.0.0.1:3400/api/health` (retries a few times).
-6. Repoints `${STAGING_CURRENT_LINK}` to the new release.
+4. Builds **only** `echarts-dashboard-staging`.
+5. Replaces any pre-existing staging container of the same fixed name (see
+   below), then starts the service from the new compose project.
+6. Health-checks `http://127.0.0.1:3400/api/health` (retries a few times).
+7. Repoints `${STAGING_CURRENT_LINK}` to the new release.
 
 If the health check fails, the script exits non-zero and prints a rollback hint.
+
+> **First real run adopts the legacy staging container.** Before this pipeline
+> managed staging, a container named `echarts-dashboard-staging` was created
+> manually (or by an earlier compose project). `docker compose up` will not
+> create a container whose name is already in use, so the first real deploy
+> explicitly retires that pre-existing container and recreates it as the managed
+> staging compose container. This step is staging-only and bounded: it acts only
+> on the single fixed name `echarts-dashboard-staging` — never a pattern or
+> glob — and it refuses to stop/remove the container unless
+> `docker inspect --format '{{.Name}}'` reports its name is exactly
+> `/echarts-dashboard-staging`. Any other name aborts the deploy without
+> touching the container. The service is rebuilt and health-checked immediately
+> after replacement.
 
 ## Rollback concept
 
