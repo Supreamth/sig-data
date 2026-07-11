@@ -159,6 +159,7 @@
             <tr><td>No CI exists yet.</td><td>Next PR should be CI-only. Do not deploy until checks are green and staging deployment is proven.</td></tr>
             <tr><td>Staging house-map UI is experimental.</td><td>Keep it out of V1.0 baseline until telemetry mapping is complete.</td></tr>
             <tr><td>Legacy <span class="mono">GerardBrowne/sig-data</span> is read-only for the current account.</td><td><span class="mono">Supreamth/sig-data</span> is now the canonical CI/CD repository. <span class="mono">GerardBrowne/sig-data</span> is no longer used for CI/CD due to read-only permissions and is kept as legacy/upstream reference only.</td></tr>
+            <tr><td>Production automation can cause outage if it runs automatically or from the wrong ref.</td><td>Production release workflow is planned as <strong>manual/tag-triggered only</strong>: no deploy on normal <span class="mono">main</span> push or PR, require <span class="mono">DEPLOY_PRODUCTION</span>, semantic release tag, GitHub <span class="mono">production</span> environment approval, production-specific runner label, health check, and rollback mode.</td></tr>
           </tbody>
         </table>
       </section>
@@ -168,7 +169,7 @@
         <div class="timeline">
           <div class="event"><h3>Completed — CI-only baseline</h3><p><span class="mono">.github/workflows/ci.yml</span> is merged on <span class="mono">Supreamth/sig-data:main</span>. Checks: node syntax, Python compile, Docker Compose config, path hygiene. No deploy.</p></div>
           <div class="event next"><h3>Completed — staging deploy live</h3><p>Manual <span class="mono">workflow_dispatch</span> staging deployment is merged and proven. Dry-run succeeded in run <span class="mono">29156271497</span>; first real staging deploy succeeded in run <span class="mono">29156791754</span> after PR #3 fixed the legacy container-name conflict. Staging remains manual, protected by the <span class="mono">staging</span> environment and runner <span class="mono">sigen-staging</span>.</p></div>
-          <div class="event"><h3>Next — production release workflow</h3><p>Add manual/tag-triggered production deployment with GitHub Environment approval, health checks, and rollback. Do not add automatic production deploys.</p></div>
+          <div class="event"><h3>Next — production release workflow plan ready</h3><p>Detailed plan published as <a href="/production-release-workflow-plan.md">production-release-workflow-plan.md</a> and saved locally at <span class="mono">/root/projects/sig-data/.hermes/plans/2026-07-11_1458-production-release-workflow.md</span>. The planned PR adds <span class="mono">.github/workflows/release-production.yml</span>, <span class="mono">scripts/deploy-production.sh</span>, <span class="mono">deploy/production/docker-compose.production.yml</span>, and <span class="mono">docs/production-release.md</span>. It stays manual/tag-triggered only: no normal <span class="mono">main</span> push deploy, no PR deploy, exact <span class="mono">DEPLOY_PRODUCTION</span> guard, semantic tag input, GitHub <span class="mono">production</span> environment approval, production runner label <span class="mono">sigen-production</span>, health checks, and rollback mode.</p></div>
         </div>
       </section>
 
@@ -187,7 +188,7 @@
         </table>
         <details>
           <summary>Suggested handoff prompt after resuming</summary>
-          <div class="code">Continue Sigen V1.0 CI/CD work. Read /root/projects/sig-data/docs/ci-cd-tracker.html first. Current open PRs: #5 V1.0 baseline and #6 secret-manifest cleanup. Do not deploy unless I explicitly approve. Next recommended task is CI-only PR.</div>
+          <div class="code">Continue Sigen V1.0 CI/CD work. Read /root/projects/sig-data/docs/ci-cd-tracker.html and /root/projects/sig-data/.hermes/plans/2026-07-11_1458-production-release-workflow.md first. Current state: Supreamth/sig-data is canonical; CI is green; staging runner/environment are live; first real staging deploy succeeded in GitHub Actions run 29156791754; production workflow is planned but not implemented. Do not deploy production unless I explicitly approve a separate real production deploy.</div>
         </details>
       </section>
 
