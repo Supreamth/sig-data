@@ -1,0 +1,54 @@
+# Production-only compose overlay for the ECharts dashboard.
+#
+# This mirrors the live production topology and is intentionally scoped to the
+# single production service. It defines NO staging service, NO collectors, NO
+# InfluxDB/Grafana, and NO Cloudflare/tunnel secrets. It binds only to loopback
+# on the production port.
+#
+# Topology (matches live production; see the root docker-compose.yml
+# echarts-dashboard service):
+#   * build context ../../echarts-dashboard  (repo echarts-dashboard/)
+#   * image           sig-data-echarts-dashboard-production:latest
+#   * container_name  echarts-dashboard
+#   * published port  127.0.0.1:3200 -> container 3200 (loopback only)
+#   * network         sig-data_default (external; created by the base stack)
+#   * env_file        /root/projects/sig-data/.env  (never printed by CI)
+#
+# Usage is limited to:
+#   docker compose -f deploy/production/docker-compose.production.yml config
+#   docker compose -f deploy/production/docker-compose.production.yml build echarts-dashboard
+#   docker compose -f deploy/production/docker-compose.production.yml up -d echarts-dashboard
+name: sig-data-production
+
+services:
+  echarts-dashboard:
+    build:
+      context: ../../echarts-dashboard
+    image: sig-data-echarts-dashboard-production:latest
+    container_name: echarts-dashboard
+    restart: unless-stopped
+    env_file:
+      - /root/projects/sig-data/.env
+    environment:
+      # Mirrors the live production service environment block (see the root
+      # docker-compose.yml echarts-dashboard service). Values come from the
+      # env_file; only defaults are declared here.
+      INFLUXDB_URL: http://influxdb:8086
+      TELEGRAM_REPORT_ENABLED: ${TELEGRAM_REPORT_ENABLED:-true}
+      TELEGRAM_REPORT_INTERVAL_MS: ${TELEGRAM_REPORT_INTERVAL_MS:-3600000}
+      TELEGRAM_REPORT_STARTUP_DELAY_MS: ${TELEGRAM_REPORT_STARTUP_DELAY_MS:-60000}
+      TELEGRAM_PARSE_MODE: ${TELEGRAM_PARSE_MODE:-}
+      DASHBOARD_AUTH_ENABLED: ${DASHBOARD_AUTH_ENABLED:-false}
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+    ports:
+      # Loopback-only publish; reverse proxy fronts this on production.
+      - "127.0.0.1:3200:3200"
+    networks:
+      - default
+
+networks:
+  # Reuse the network created by the base docker-compose.yml stack.
+  default:
+    name: sig-data_default
+    external: true
