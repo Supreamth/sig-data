@@ -72,7 +72,7 @@
   <div class="grid-4">
     <div class="card ok"><p class="eyebrow">Production</p><div class="metric">OK</div><p class="sub">/api/health live</p></div>
     <div class="card ok"><p class="eyebrow">Staging</p><div class="metric">OK</div><p class="sub">/api/health live</p></div>
-    <div class="card warn"><p class="eyebrow">Open PRs</p><div class="metric">2</div><p class="sub">#5 baseline · #6 hygiene</p></div>
+    <div class="card warn"><p class="eyebrow">Open PRs</p><div class="metric">3</div><p class="sub">#5 baseline · #6 hygiene · #7 CI</p></div>
     <div class="card"><p class="eyebrow">Deployment</p><div class="metric">0</div><p class="sub">no restarts/deploys done</p></div>
   </div>
 
@@ -100,7 +100,7 @@
             <tr><td>Production URL</td><td><span class="pill ok">healthy</span></td><td><a href="https://sigen.sprees.net/">https://sigen.sprees.net/</a> · Basic Auth enabled · public health endpoint OK.</td></tr>
             <tr><td>Staging URL</td><td><span class="pill ok">healthy</span></td><td><a href="https://sigen-staging.sprees.net/">https://sigen-staging.sprees.net/</a> · Basic Auth enabled · public health endpoint OK.</td></tr>
             <tr><td>GitHub source repo</td><td><span class="pill warn">read-only for current account</span></td><td><a href="https://github.com/GerardBrowne/sig-data">GerardBrowne/sig-data</a>. Current GitHub account <span class="mono">Supreamth</span> has READ permission, so PR branches are pushed from fork <span class="mono">Supreamth/sig-data</span>.</td></tr>
-            <tr><td>Local repo</td><td><span class="pill ok">available</span></td><td><span class="mono">/root/projects/sig-data</span>. Current branch after PR2 work: <span class="mono">security/repo-hygiene-main</span>.</td></tr>
+            <tr><td>Local repo</td><td><span class="pill ok">available</span></td><td><span class="mono">/root/projects/sig-data</span>. Current working branch for CI prep: <span class="mono">ci/v1-after-hygiene-checks</span>.</td></tr>
             <tr><td>Excluded worktree item</td><td><span class="pill warn">intentional</span></td><td><span class="mono">ev-solar-flow/</span> remains untracked and intentionally excluded from baseline PR #5.</td></tr>
           </tbody>
         </table>
