@@ -125,6 +125,7 @@
           <thead><tr><th>Branch / PR</th><th>Purpose</th><th>Status</th><th>Merge note</th></tr></thead>
           <tbody>
             <tr><td><a href="https://github.com/Supreamth/sig-data/compare/main...canonical/supreamth-cicd">canonical/supreamth-cicd</a></td><td>Consolidate the V1.0 production baseline, repository hygiene cleanup, public tracker, CI-only workflow, and canonical repo reference updates into <span class="mono">Supreamth/sig-data</span>.</td><td><span class="pill warn">pending PR</span></td><td>Open this PR against <span class="mono">Supreamth/sig-data:main</span>, wait for CI green, then merge. The old GerardBrowne PRs are legacy/read-only and no longer gate CI/CD.</td></tr>
+            <tr><td><a href="https://github.com/Supreamth/sig-data/compare/main...cd/staging-manual-deploy">cd/staging-manual-deploy</a></td><td>Add a <strong>staging-only, manual/controlled deployment scaffold</strong>: <span class="mono">.github/workflows/deploy-staging.yml</span> (workflow_dispatch only, <span class="mono">DEPLOY_STAGING</span> guard, <span class="mono">staging</span> environment), <span class="mono">deploy/staging/docker-compose.staging.yml</span>, <span class="mono">scripts/deploy-staging.sh</span> (dry-run default), and <span class="mono">docs/staging-deployment.md</span>.</td><td><span class="pill warn">manual · staging-only</span></td><td>Deployment remains <strong>manual and staging-only</strong>. No production path is included. Targets a future self-hosted runner labelled <span class="mono">[self-hosted, linux, sigen-staging]</span> that is not yet registered, so nothing deploys automatically. Dry-run first, then real deploy.</td></tr>
           </tbody>
         </table>
       </section>
@@ -166,7 +167,7 @@
         <h2>Recommended next PR sequence</h2>
         <div class="timeline">
           <div class="event next"><h3>PR #7 — CI only</h3><p>Add <span class="mono">.github/workflows/ci.yml</span>. Checks: node syntax, Python compile, Docker builds, Compose config, path hygiene. No deploy.</p></div>
-          <div class="event"><h3>PR #8 — staging deploy</h3><p>Add self-hosted runner deployment to <span class="mono">sigen-staging.sprees.net</span>. Deploy staging only after CI succeeds.</p></div>
+          <div class="event next"><h3>PR #8 — staging deploy (scaffold ready)</h3><p>Branch <span class="mono">cd/staging-manual-deploy</span> adds the staging deploy scaffold: manual <span class="mono">workflow_dispatch</span> workflow with a <span class="mono">DEPLOY_STAGING</span> guard, staging compose overlay, and a dry-run-by-default script. Deployment stays <strong>manual and staging-only</strong> and does not run until a self-hosted runner labelled <span class="mono">[self-hosted, linux, sigen-staging]</span> is registered.</p></div>
           <div class="event"><h3>PR #9 — production release workflow</h3><p>Add manual/tag-triggered production deployment with GitHub Environment approval, health checks, and rollback.</p></div>
         </div>
       </section>

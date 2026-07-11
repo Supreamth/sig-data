@@ -1,0 +1,97 @@
+# Staging-only, manual/controlled deployment workflow.
+#
+# SAFETY / SCOPE
+#   * Trigger is workflow_dispatch ONLY. There is intentionally no push or
+#     pull_request trigger, so no code change can ever auto-deploy.
+#   * This workflow is STAGING ONLY. It contains no production hostname,
+#     no production container names, and no production deploy job.
+#   * The deploy job targets a FUTURE self-hosted runner with the labels
+#     [self-hosted, linux, sigen-staging]. No such runner is currently
+#     registered, so this workflow will queue but NOT execute until that
+#     runner is installed and registered for Supreamth/sig-data.
+#   * Actual work is delegated to scripts/deploy-staging.sh, which defaults
+#     to dry-run and only touches the staging release directories.
+name: Deploy Staging (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY_STAGING exactly to authorize a staging deploy.'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry-run only prints planned actions. Keep true until you are ready.'
+        required: true
+        type: choice
+        default: 'true'
+        options:
+          - 'true'
+          - 'false'
+      ref:
+        description: 'Commit / branch / tag to deploy to staging. Defaults to the branch this workflow runs on (or main).'
+        required: false
+        type: string
+        default: main
+
+# Minimal permissions: this workflow only needs to read repository contents.
+permissions:
+  contents: read
+
+# Bind to the protected GitHub "staging" environment so environment rules
+# (reviewers, secrets, protection) apply to every run.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: Confirmation guard
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Verify confirmation phrase
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          if [ "${CONFIRM}" != "DEPLOY_STAGING" ]; then
+            echo "::error::confirm input must be exactly 'DEPLOY_STAGING' (got a different value)."
+            exit 1
+          fi
+          echo "Confirmation accepted. Proceeding to staging deploy job."
+
+  deploy-staging:
+    name: Deploy to staging
+    needs: guard
+    # Targets a future self-hosted runner. NO runner with these labels is
+    # currently registered, so this job will not start until one exists.
+    runs-on: [self-hosted, linux, sigen-staging]
+    environment: staging
+    steps:
+      - name: Resolve deploy ref
+        id: ref
+        shell: bash
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          resolved="${INPUT_REF:-${GITHUB_REF_NAME:-main}}"
+          echo "resolved=${resolved}" >> "$GITHUB_OUTPUT"
+          echo "Deploying staging from ref: ${resolved}"
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.resolved }}
+
+      - name: Run staging deploy script
+        shell: bash
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/deploy-staging.sh
+          # The script itself re-checks the confirmation and defaults to dry-run.
+          ./scripts/deploy-staging.sh --confirm DEPLOY_STAGING --dry-run "${DRY_RUN}"
