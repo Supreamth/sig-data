@@ -1,0 +1,189 @@
+# Production release workflow — manual, tag-gated, approval-protected.
+#
+# SAFETY / SCOPE
+#   * Trigger is workflow_dispatch ONLY for V1.0. There is intentionally no
+#     push and no pull_request trigger, so no code change can ever auto-deploy
+#     production.
+#   * Production is scoped to the single service `echarts-dashboard`. This
+#     workflow contains no collectors, no InfluxDB/Grafana, and no staging job.
+#   * The deploy job targets a self-hosted runner with the labels
+#     [self-hosted, linux, sigen-production] and binds to the protected GitHub
+#     `production` environment, so environment reviewers must approve each run.
+#     No such runner/environment exists yet, so this workflow will queue but
+#     NOT execute until they are created.
+#   * Actual work is delegated to scripts/deploy-production.sh, which defaults
+#     to dry-run and only touches the production release directories.
+name: Release Production (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Semantic version tag to deploy, e.g. v1.0.0. Required for deploy mode.'
+        required: true
+        type: string
+        default: v1.0.0
+      confirm:
+        description: 'Type DEPLOY_PRODUCTION exactly to authorize a production action.'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry-run only prints planned actions. Keep true until you are ready.'
+        required: true
+        type: choice
+        default: 'true'
+        options:
+          - 'true'
+          - 'false'
+      mode:
+        description: 'deploy builds/replaces the production dashboard; rollback repoints to a previous release.'
+        required: true
+        type: choice
+        default: 'deploy'
+        options:
+          - 'deploy'
+          - 'rollback'
+      rollback_release:
+        description: 'Rollback only: absolute release dir under /opt/sigen-production/releases/<id>.'
+        required: false
+        type: string
+        default: ''
+
+# Minimal permissions: this workflow only needs to read repository contents.
+permissions:
+  contents: read
+
+# Serialize production actions; never cancel an in-flight production run.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: Confirmation and input guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # A fresh ubuntu-latest runner has no repository and no `origin` remote,
+      # so `git ls-remote origin ...` below would fail before it could validate
+      # the tag. Check out the repo first: checkout@v4 configures an
+      # authenticated `origin` remote, and `git ls-remote --tags origin` then
+      # queries that remote directly (no local tag fetch required).
+      - name: Check out repository (configures origin for tag lookup)
+        uses: actions/checkout@v4
+
+      - name: Validate confirmation, mode, and release inputs
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          MODE: ${{ inputs.mode }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          ROLLBACK_RELEASE: ${{ inputs.rollback_release }}
+        run: |
+          set -euo pipefail
+
+          if [ "${CONFIRM}" != "DEPLOY_PRODUCTION" ]; then
+            echo "::error::confirm input must be exactly 'DEPLOY_PRODUCTION' (got a different value)."
+            exit 1
+          fi
+
+          case "${MODE}" in
+            deploy|rollback) ;;
+            *)
+              echo "::error::mode must be 'deploy' or 'rollback' (got '${MODE}')."
+              exit 1
+              ;;
+          esac
+
+          if [ "${MODE}" = "deploy" ]; then
+            # Require a semantic version tag; reject branches and raw SHAs.
+            if ! printf '%s' "${RELEASE_TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9._-]+)?$'; then
+              echo "::error::release_tag '${RELEASE_TAG}' is not a semantic version tag (expected vMAJOR.MINOR.PATCH[-suffix])."
+              exit 1
+            fi
+            # Verify the tag actually exists on the remote before deploying.
+            if ! git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+              echo "::error::release_tag '${RELEASE_TAG}' does not exist as a tag on origin."
+              exit 1
+            fi
+            echo "Deploy guard passed for tag ${RELEASE_TAG}."
+          else
+            # Rollback requires an absolute path under the production releases root.
+            case "${ROLLBACK_RELEASE}" in
+              /opt/sigen-production/releases/?*)
+                case "${ROLLBACK_RELEASE}" in
+                  *..*)
+                    echo "::error::rollback_release must not contain '..'."
+                    exit 1
+                    ;;
+                esac
+                ;;
+              *)
+                echo "::error::rollback_release must be an absolute path under /opt/sigen-production/releases/ for rollback mode."
+                exit 1
+                ;;
+            esac
+            echo "Rollback guard passed for release ${ROLLBACK_RELEASE}."
+          fi
+
+  deploy-production:
+    name: Deploy / rollback production
+    needs: guard
+    # Targets a self-hosted production runner. NO runner with these labels is
+    # currently registered, so this job will not start until one exists.
+    runs-on: [self-hosted, linux, sigen-production]
+    environment: production
+    permissions:
+      contents: read
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Resolve checkout ref
+        id: ref
+        shell: bash
+        env:
+          MODE: ${{ inputs.mode }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          # Deploy checks out the immutable release tag. Rollback checks out main
+          # because the rollback path/compose come from the existing release dir.
+          if [ "${MODE}" = "deploy" ]; then
+            resolved="refs/tags/${RELEASE_TAG}"
+          else
+            resolved="main"
+          fi
+          echo "resolved=${resolved}" >> "$GITHUB_OUTPUT"
+          echo "Checking out ref: ${resolved}"
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.resolved }}
+
+      - name: Run production release script
+        shell: bash
+        env:
+          MODE: ${{ inputs.mode }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          ROLLBACK_RELEASE: ${{ inputs.rollback_release }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/deploy-production.sh
+          # The script re-checks the confirmation and defaults to dry-run.
+          if [ "${MODE}" = "deploy" ]; then
+            ./scripts/deploy-production.sh \
+              --mode deploy \
+              --tag "${RELEASE_TAG}" \
+              --confirm DEPLOY_PRODUCTION \
+              --dry-run "${DRY_RUN}"
+          else
+            ./scripts/deploy-production.sh \
+              --mode rollback \
+              --rollback-release "${ROLLBACK_RELEASE}" \
+              --confirm DEPLOY_PRODUCTION \
+              --dry-run "${DRY_RUN}"
+          fi
