@@ -58,6 +58,20 @@ jobs:
             sigen_openapi_pv_collector.py \
             tesla_fleet_collector.py
 
+      - name: Prepare CI environment file
+        shell: bash
+        run: |
+          set -euo pipefail
+          # docker-compose.yml references `env_file: .env`, but .env is prohibited
+          # from being tracked (see hygiene check) and is absent in CI. Seed a CI
+          # .env from the tracked .env.example so compose config can resolve it.
+          if [ -f .env ]; then
+            echo ".env already present; leaving as-is"
+          else
+            cp .env.example .env
+            echo "Created CI .env from .env.example"
+          fi
+
       - name: Docker Compose config validation
         shell: bash
         run: |
