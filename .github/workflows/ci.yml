@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+      - release/v1.0-baseline
+      - 'ci/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Sigen V1.0 baseline
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Node syntax checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            echarts-dashboard/server.js
+            echarts-dashboard/public/app.js
+            d3-dashboard/server.js
+            d3-dashboard/public/app.js
+            power-flow-dashboard/server.js
+            power-flow-dashboard/public/app.js
+          )
+          for file in "${files[@]}"; do
+            echo "node --check $file"
+            node --check "$file"
+          done
+
+      - name: Python syntax checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile \
+            auth_handler.py \
+            influxdb_writer.py \
+            main_scheduler.py \
+            mysigen_realtime_collector.py \
+            mysigen_pv_string_collector.py \
+            mysigen_battery_module_collector.py \
+            sigen_openapi_pv_collector.py \
+            tesla_fleet_collector.py
+
+      - name: Docker Compose config validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose --profile stack config >/tmp/sig-data-compose-config.out
+          test -s /tmp/sig-data-compose-config.out
+
+      - name: Repository hygiene check
+        shell: bash
+        run: |
+          set -euo pipefail
+          prohibited_regex='(^|/)(\.env($|\.)|data/sigen_token\.json$|node_modules/|dist/|\.hermes/|k8s/.*(secret|token).*\.ya?ml$)'
+          allowed_examples_regex='(^|/)(\.env\.example$|.*\.example\.ya?ml$)'
+          bad_paths="$({ git ls-files | grep -E "$prohibited_regex" || true; } | grep -Ev "$allowed_examples_regex" || true)"
+          if [ -n "$bad_paths" ]; then
+            echo "Tracked prohibited secret/generated paths found:"
+            printf '%s\n' "$bad_paths"
+            exit 1
+          fi
+          echo "Repository hygiene check passed"
