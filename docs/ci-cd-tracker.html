@@ -114,7 +114,8 @@
           <div class="event done"><h3>Phase 2A inclusion plan</h3><p>Classified files into V1.0 include/exclude/defer buckets. Decided production baseline should be committed first, while staging house-map and EV solar flow stay separate.</p></div>
           <div class="event done"><h3>PR #5 opened</h3><p>Committed and opened the V1.0 production baseline PR from fork branch <span class="mono">release/v1.0-baseline</span>. This captures the live ECharts dashboard, alternate dashboards, collectors, docs, and compose wiring.</p></div>
           <div class="event done"><h3>PR #6 opened</h3><p>Committed and opened the repository hygiene/security PR from fork branch <span class="mono">security/repo-hygiene-main</span>. It removes tracked configured secret manifests and adds a Cloudflare tunnel secret example template.</p></div>
-          <div class="event next"><h3>Next: CI-only PR</h3><p>Add GitHub Actions checks only. No deployment. This should verify syntax, Python compilation, Docker builds, Compose config, and safe path hygiene.</p></div>
+          <div class="event done"><h3>Web tracker exposed</h3><p>Published this tracker at <a href="https://cicd.sprees.net/ci-cd-tracker.html">https://cicd.sprees.net/ci-cd-tracker.html</a> via a local systemd static server and the existing Cloudflare tunnel.</p></div>
+          <div class="event next"><h3>PR #7 opened as draft: CI-only</h3><p>Added a CI-only workflow on branch <span class="mono">ci/v1-after-hygiene-checks</span>. It validates syntax, Docker Compose config, and repository hygiene. It does not deploy.</p></div>
         </div>
       </section>
 
@@ -124,7 +125,8 @@
           <thead><tr><th>PR</th><th>Purpose</th><th>Status</th><th>Merge note</th></tr></thead>
           <tbody>
             <tr><td><a href="https://github.com/GerardBrowne/sig-data/pull/5">#5</a></td><td>Capture V1.0 production baseline.</td><td><span class="pill warn">open</span></td><td>Merge this first so GitHub represents the current production app.</td></tr>
-            <tr><td><a href="https://github.com/GerardBrowne/sig-data/pull/6">#6</a></td><td>Remove tracked secret-looking manifests and improve ignore rules.</td><td><span class="pill warn">open</span></td><td>Can merge independently, but if GitHub reports conflicts after #5 merge, rebase/refresh from main.</td></tr>
+            <tr><td><a href="https://github.com/GerardBrowne/sig-data/pull/6">#6</a></td><td>Remove tracked secret-looking manifests, improve ignore rules, and add this tracker.</td><td><span class="pill warn">open</span></td><td>Can merge independently, but if GitHub reports conflicts after #5 merge, rebase/refresh from main.</td></tr>
+            <tr><td><a href="https://github.com/GerardBrowne/sig-data/pull/7">#7</a></td><td>Add CI-only baseline validation workflow.</td><td><span class="pill warn">draft/open</span></td><td>Stacked for review. Merge after #5 and #6, then refresh if necessary.</td></tr>
           </tbody>
         </table>
       </section>
