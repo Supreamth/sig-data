@@ -1,0 +1,55 @@
+# Staging-only compose overlay for the ECharts dashboard.
+#
+# This mirrors the existing live staging topology and is intentionally scoped
+# to the single staging service. It defines NO production service, NO
+# production container name, and binds only to loopback on the staging port.
+#
+# Topology (matches live staging):
+#   * build context ../../echarts-dashboard  (repo echarts-dashboard/)
+#   * image           sig-data-echarts-dashboard-staging:latest
+#   * container_name  echarts-dashboard-staging
+#   * published port  127.0.0.1:3400 -> container 3200 (loopback only)
+#   * network         sig-data_default (external; created by the base stack)
+#   * env_file        /root/projects/sig-data/.env  (never printed by CI)
+#
+# Usage is limited to:
+#   docker compose -f deploy/staging/docker-compose.staging.yml config
+#   docker compose -f deploy/staging/docker-compose.staging.yml build echarts-dashboard-staging
+#   docker compose -f deploy/staging/docker-compose.staging.yml up -d echarts-dashboard-staging
+name: sig-data-staging
+
+services:
+  echarts-dashboard-staging:
+    build:
+      context: ../../echarts-dashboard
+    image: sig-data-echarts-dashboard-staging:latest
+    container_name: echarts-dashboard-staging
+    restart: unless-stopped
+    env_file:
+      - /root/projects/sig-data/.env
+    environment:
+      # Mirrors the live staging service environment block (see the root
+      # docker-compose.yml echarts-dashboard service), with staging-safe
+      # overrides for auth and Telegram.
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_ORG: ${INFLUXDB_ORG:-sigorg}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET:-energy_metrics}
+      TIMEZONE: ${TIMEZONE:-Asia/Bangkok}
+      WEATHER_TIMEZONE: ${WEATHER_TIMEZONE:-Asia/Bangkok}
+      # Auth is enabled by default on staging (credentials come from env_file).
+      DASHBOARD_AUTH_ENABLED: ${DASHBOARD_AUTH_ENABLED:-true}
+      # Telegram reporting and alerts are disabled on staging to avoid
+      # duplicate/noisy messages while validating a release.
+      TELEGRAM_REPORT_ENABLED: "false"
+      TELEGRAM_ALERTS_ENABLED: "false"
+    ports:
+      # Loopback-only publish; reverse proxy fronts this on staging.
+      - "127.0.0.1:3400:3200"
+    networks:
+      - default
+
+networks:
+  # Reuse the network created by the base docker-compose.yml stack.
+  default:
+    name: sig-data_default
+    external: true
