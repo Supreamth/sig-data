@@ -219,6 +219,7 @@ body {
   line-height: 1.05;
   color: var(--text);
   text-shadow: 0 0 18px color-mix(in srgb, currentColor 36%, transparent);
+  overflow-wrap: anywhere;
 }
 
 .kpi-tile small {
@@ -410,7 +411,7 @@ body {
 .node-home { left: 50%; top: 54%; min-width: 170px; min-height: 94px; border-color: rgba(88,166,255,.36); }
 .node-battery { left: 83%; top: 61%; }
 .node-dc { left: 83%; top: 84%; }
-.node-tesla { left: 50%; top: 91%; min-width: 150px; }
+.node-tesla { left: 50%; top: 88%; min-width: 150px; }
 
 .flow-empty {
   position: absolute;
@@ -538,6 +539,10 @@ body {
   gap: 9px;
   margin-bottom: 11px;
 }
+
+/* keep the middle text column shrinkable so long titles/badges don't clip */
+.side-card-head > div { min-width: 0; }
+.side-card-head h3 { overflow-wrap: anywhere; }
 
 .side-card-icon {
   font-size: 22px;
@@ -749,6 +754,7 @@ body {
 /* ── Flow chips ───────────────────────────────────────── */
 .flow-chips {
   position: absolute;
+  z-index: 2;
   bottom: 14px;
   left: 14px;
   right: 14px;
@@ -805,26 +811,40 @@ body.is-offline .command-bar {
 }
 
 /* ── Responsive ───────────────────────────────────────── */
+/* 1440 — large desktop: tighten the 8-up KPI ribbon so values never clip */
+@media (max-width: 1440px) {
+  .kpi-ribbon { gap: 8px; }
+  .kpi-tile { padding: 11px 9px 9px; }
+  .kpi-tile strong { font-size: clamp(16px, 1.5vw, 21px); }
+  .hero-grid { grid-template-columns: 1fr 300px; }
+}
+
 @media (max-width: 1200px) {
   .hero-grid { grid-template-columns: 1fr 280px; }
   .kpi-ribbon { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
+/* 1000 — stack hero; side cards sit in a row without clipping */
 @media (max-width: 1000px) {
   .hero-grid { grid-template-columns: 1fr; }
   .side-stack { flex-direction: row; flex-wrap: wrap; }
   .intent-card,
-  .side-card { flex: 1 1 240px; }
+  .side-card { flex: 1 1 260px; min-width: 0; }
+  .kpi-tile strong { font-size: clamp(16px, 2.6vw, 22px); }
 }
 
+/* 760 — single-column charts + compact flow chips */
 @media (max-width: 760px) {
   .kpi-ribbon { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 10px 12px; }
   .hero-grid { padding: 10px 12px; gap: 10px; }
   .analysis-grid { padding: 0 12px 10px; gap: 10px; grid-template-columns: 1fr; }
   .health-v2 { margin: 0 12px 12px; }
   .command-bar { flex-wrap: wrap; gap: 10px; padding: 12px 16px; }
+  .cb-status { flex-basis: 100%; }
   .cb-sys-status { margin-left: 0; }
   .health-grid-v2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flow-chips { gap: 5px; }
+  .flow-chip { font-size: 10px; padding: 3px 8px; }
 }
 
 @media (max-width: 560px) {
@@ -833,7 +853,50 @@ body.is-offline .command-bar {
   .side-stack { flex-direction: column; }
 }
 
+/* 375 — phone: shrink flow nodes so they never overlap, trim chip clutter */
+@media (max-width: 420px) {
+  .kpi-ribbon { padding: 9px 10px; gap: 7px; }
+  .kpi-tile { padding: 10px 8px 8px; }
+  .kpi-tile strong { font-size: 17px; }
+
+  .flow-card { min-height: 420px; }
+  #flow-canvas { min-height: 340px; }
+
+  .flow-node {
+    min-width: 92px;
+    min-height: 60px;
+    padding: 7px 8px;
+    grid-template-columns: 22px 1fr;
+    column-gap: 5px;
+  }
+  .flow-node span { width: 22px; height: 22px; font-size: 13px; }
+  .flow-node small { font-size: 8px; letter-spacing: .04em; }
+  .flow-node strong { font-size: 12px; }
+  .node-home { min-width: 106px; min-height: 66px; }
+  .node-pv { top: 15%; }
+  .node-home { top: 47%; }
+  .node-grid { left: 16%; top: 56%; }
+  .node-battery { left: 84%; top: 56%; }
+  .node-dc { left: 84%; top: 76%; }
+  .node-tesla { top: 88%; min-width: 100px; }
+
+  .flow-chips { bottom: 10px; left: 10px; right: 10px; gap: 4px; }
+  .flow-chip { font-size: 9px; padding: 2px 7px; }
+
+  .side-card-grid { gap: 5px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  /* disable live badge pulse, flow path motion, and any animated effects */
+  .live-badge,
   .live-badge.live::before,
-  .flow-guide.active { animation: none; }
+  .flow-guide,
+  .flow-guide.active,
+  .flow-node,
+  .kpi-tile,
+  .soc-ring {
+    animation: none !important;
+    transition: none !important;
+  }
+  .flow-guide.active { stroke-dasharray: 8 6; }
 }
