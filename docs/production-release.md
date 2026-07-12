@@ -155,6 +155,67 @@ re-running the known-good `v1.0.0` deploy or manually restoring the pre-managed
 legacy container/state from server backups or the preserved legacy runtime
 configuration.
 
+### Rollback readiness checklist
+
+Use this checklist before any future production release and during incident
+triage. It is read-only except where the final emergency action explicitly says
+otherwise.
+
+1. Confirm the active managed release:
+
+   ```bash
+   readlink -f /opt/sigen-production/current
+   find /opt/sigen-production/releases -maxdepth 1 -mindepth 1 -type d -printf '%p\n' | sort
+   ```
+
+   Expected immediately after V1.0: `current` points to
+   `/opt/sigen-production/releases/v1.0.0`, and `v1.0.0` is the only managed
+   release directory.
+
+2. Confirm production container identity and start time:
+
+   ```bash
+   docker inspect --format '{{.Id}} {{.Name}} {{.Config.Image}} {{.State.Status}} {{.State.StartedAt}}' echarts-dashboard
+   ```
+
+   Expected immediately after V1.0: a running `/echarts-dashboard` container using
+   image `sig-data-echarts-dashboard-production:latest`.
+
+3. Confirm production and staging health:
+
+   ```bash
+   curl -sS -o /tmp/sigen-production-health.json -w 'production=%{http_code}\n' https://sigen.sprees.net/api/health
+   curl -sS -o /tmp/sigen-staging-health.json -w 'staging=%{http_code}\n' https://sigen-staging.sprees.net/api/health
+   ```
+
+   Both should return HTTP 200. Staging is checked because production release and
+   rollback actions must not affect the staging container.
+
+4. Confirm whether a managed rollback target exists:
+
+   ```bash
+   find /opt/sigen-production/releases -maxdepth 1 -mindepth 1 -type d ! -name v1.0.0 -printf '%p\n' | sort
+   ```
+
+   If this prints nothing, there is no older managed release to roll back to.
+   Do not dispatch workflow rollback with an invented path.
+
+5. If a future managed release exists, dry-run rollback first:
+
+   ```bash
+   ./scripts/deploy-production.sh --mode rollback \
+     --rollback-release /opt/sigen-production/releases/<previous-release> \
+     --confirm DEPLOY_PRODUCTION --dry-run true
+   ```
+
+6. If V1.0 remains the only managed release and production is unhealthy, the safe
+   emergency choices are:
+
+   - re-run the known-good `v1.0.0` deploy through the protected production
+     workflow, starting with `dry_run: true`; or
+   - manually restore the pre-managed legacy container/state from backups or
+     preserved server runtime configuration.
+
 Via the workflow:
 
 - `mode`: `rollback`
