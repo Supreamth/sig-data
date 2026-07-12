@@ -2828,7 +2828,7 @@ function deriveCockpitIntent(e) {
   const THRESH = 0.05;
 
   if (pv === null && grid === null && battery === null) {
-    return { primary: 'Waiting for fresh telemetry', secondary: [], state: 'no_data' };
+    return { primary: 'Waiting for fresh telemetry', secondary: [], reasons: [], state: 'no_data' };
   }
 
   const pvActive = pv !== null && pv > THRESH;
@@ -2838,28 +2838,47 @@ function deriveCockpitIntent(e) {
   const battDischarging = battery !== null && battery < -THRESH;
   const evActive = ev !== null && ev > THRESH;
 
+  // Build evidence trail from raw telemetry values
+  const reasons = [];
+  if (pv !== null) reasons.push(pvActive ? `PV ${pv.toFixed(2)} kW active` : 'PV not generating');
+  if (grid !== null) {
+    if (gridImporting) reasons.push(`Grid importing ${Math.abs(grid).toFixed(2)} kW`);
+    else if (gridExporting) reasons.push(`Grid exporting ${grid.toFixed(2)} kW`);
+    else reasons.push('Grid idle (no import/export)');
+  }
+  if (battery !== null) {
+    if (battCharging) reasons.push(`Battery charging at ${battery.toFixed(2)} kW`);
+    else if (battDischarging) reasons.push(`Battery discharging at ${Math.abs(battery).toFixed(2)} kW`);
+    else reasons.push('Battery idle');
+  }
+  if (evActive) reasons.push(`EV drawing ${ev.toFixed(2)} kW`);
+
   const secondary = [];
   let primary, state;
 
   if (pvActive) {
     if (battCharging && !gridExporting) {
-      primary = 'Charging battery from solar';
+      primary = 'Charging battery from excess PV';
       state = 'solar_charging_battery';
     } else if (gridExporting) {
-      primary = 'Exporting solar surplus to grid';
+      primary = 'Exporting solar surplus';
       state = 'solar_export';
     } else {
       primary = 'Using solar for home load';
       state = 'solar_to_home';
     }
-    if (battCharging) secondary.push('Battery charging');
-    if (gridImporting) secondary.push(`Importing ${Math.abs(grid).toFixed(2)} kW from grid`);
+    if (battCharging) secondary.push(`Battery charging at ${battery.toFixed(2)} kW`);
+    if (gridImporting) secondary.push(`Also importing ${Math.abs(grid).toFixed(2)} kW from grid`);
+    if (gridExporting) secondary.push(`Exporting ${grid.toFixed(2)} kW to grid`);
   } else if (battDischarging) {
-    primary = 'Battery supporting home load';
+    // Use time-of-day to label the evening peak discharge scenario
+    const hour = new Date().getHours();
+    const isEvening = hour >= 17 && hour < 23;
+    primary = isEvening ? 'Battery supporting evening load' : 'Battery supporting home load';
     state = 'battery_to_home';
-    if (gridImporting) secondary.push(`Importing ${Math.abs(grid).toFixed(2)} kW from grid`);
+    if (gridImporting) secondary.push(`Also importing ${Math.abs(grid).toFixed(2)} kW from grid`);
   } else if (gridImporting) {
-    primary = 'Importing from grid for home load';
+    primary = 'Importing grid for home load';
     state = 'grid_to_home';
   } else if (gridExporting) {
     primary = 'Exporting to grid';
@@ -2869,8 +2888,8 @@ function deriveCockpitIntent(e) {
     state = 'idle';
   }
 
-  if (evActive) secondary.push('EV charging from load bus');
-  return { primary, secondary, state };
+  if (evActive) secondary.push(`EV charging ${ev.toFixed(2)} kW from load bus`);
+  return { primary, secondary, reasons, state };
 }
 
 function buildCockpitFlows(e) {

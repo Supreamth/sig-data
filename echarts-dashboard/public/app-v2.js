@@ -142,11 +142,16 @@
 
   // ── Energy Intent card ───────────────────────────────────────────────────────
 
+  function safeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
   function applyIntent(data) {
     const intent = data.intent || {};
     const primary = intent.primary || 'Waiting for telemetry…';
     const state = (intent.state || '').replace(/_/g, ' ');
     const secondary = Array.isArray(intent.secondary) ? intent.secondary : [];
+    const reasons = Array.isArray(intent.reasons) ? intent.reasons : [];
 
     setText('intent-primary', primary);
     setText('intent-chip', state || '—');
@@ -155,10 +160,23 @@
     if (bullets) {
       if (secondary.length > 0) {
         bullets.innerHTML = secondary.map(function(s) {
-          return '<li>' + s.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>';
+          return '<li>' + safeHtml(s) + '</li>';
         }).join('');
       } else {
         bullets.innerHTML = '<li>—</li>';
+      }
+    }
+
+    const reasonsEl = el('intent-reasons');
+    if (reasonsEl) {
+      if (reasons.length > 0) {
+        reasonsEl.innerHTML = reasons.map(function(r) {
+          return '<li>' + safeHtml(r) + '</li>';
+        }).join('');
+        reasonsEl.hidden = false;
+      } else {
+        reasonsEl.innerHTML = '';
+        reasonsEl.hidden = true;
       }
     }
   }

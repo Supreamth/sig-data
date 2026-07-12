@@ -489,6 +489,25 @@ body {
 
 .intent-bullets li + li { margin-top: 4px; }
 
+.intent-reasons {
+  margin: 7px 0 0;
+  padding-left: 0;
+  list-style: none;
+  border-top: 1px solid rgba(53,208,127,.12);
+  padding-top: 7px;
+  color: rgba(160,174,192,.55);
+  font-size: 11px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.intent-reasons li::before {
+  content: '↳ ';
+  color: rgba(53,208,127,.45);
+}
+
+.intent-reasons li + li { margin-top: 3px; }
+
 /* ── Side Cards ───────────────────────────────────────── */
 .side-card {
   border: 1px solid var(--border);
