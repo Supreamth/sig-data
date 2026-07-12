@@ -72,8 +72,8 @@
   <div class="grid-4">
     <div class="card ok"><p class="eyebrow">Production</p><div class="metric">OK</div><p class="sub">/api/health live</p></div>
     <div class="card ok"><p class="eyebrow">Staging</p><div class="metric">OK</div><p class="sub">/api/health live</p></div>
-    <div class="card warn"><p class="eyebrow">Canonical PR</p><div class="metric">pending</div><p class="sub">Supreamth main migration branch ready</p></div>
-    <div class="card"><p class="eyebrow">Deployment</p><div class="metric">0</div><p class="sub">no restarts/deploys done</p></div>
+    <div class="card ok"><p class="eyebrow">Canonical repo</p><div class="metric">main</div><p class="sub">Supreamth/sig-data live</p></div>
+    <div class="card ok"><p class="eyebrow">Managed deploy</p><div class="metric">v1.0.0</div><p class="sub">production release live</p></div>
   </div>
 
   <div class="layout">
@@ -100,11 +100,11 @@
             <tr><td>Production URL</td><td><span class="pill ok">healthy</span></td><td><a href="https://sigen.sprees.net/">https://sigen.sprees.net/</a> · Basic Auth enabled · public health endpoint OK.</td></tr>
             <tr><td>Staging URL</td><td><span class="pill ok">healthy</span></td><td><a href="https://sigen-staging.sprees.net/">https://sigen-staging.sprees.net/</a> · Basic Auth enabled · public health endpoint OK.</td></tr>
             <tr><td>GitHub source repo</td><td><span class="pill ok">canonical CI/CD</span></td><td><a href="https://github.com/Supreamth/sig-data">Supreamth/sig-data</a> is now the canonical CI/CD repository. <a href="https://github.com/GerardBrowne/sig-data">GerardBrowne/sig-data</a> is retained as read-only legacy/upstream reference only and is no longer used for CI/CD due to read-only permissions.</td></tr>
-            <tr><td>Local repo</td><td><span class="pill ok">available</span></td><td><span class="mono">/root/projects/sig-data</span>. Current working branch for CI prep: <span class="mono">ci/v1-after-hygiene-checks</span>.</td></tr>
+            <tr><td>Local repo</td><td><span class="pill ok">available</span></td><td><span class="mono">/root/projects/sig-data</span>. Canonical branch: <span class="mono">main</span>. Current docs follow-up branch, when active: <span class="mono">docs/production-postdeploy-runbook</span>.</td></tr>
             <tr><td>Excluded worktree item</td><td><span class="pill warn">intentional</span></td><td><span class="mono">ev-solar-flow/</span> remains untracked and intentionally excluded from baseline PR #5.</td></tr>
           </tbody>
         </table>
-        <div class="callout ok"><strong>Important.</strong> No production or staging deployment has been executed during this CI/CD preparation. The live health checks still pass.</div>
+        <div class="callout ok"><strong>Important.</strong> CI, staging, and production release automation are now live and proven. First managed staging deploy succeeded in run <span class="mono">29156791754</span>; first managed production deploy succeeded in run <span class="mono">29159055177</span>. Production and staging health checks still pass.</div>
       </section>
 
       <section id="timeline">
@@ -115,7 +115,8 @@
           <div class="event done"><h3>PR #5 opened</h3><p>Committed and opened the V1.0 production baseline PR from fork branch <span class="mono">release/v1.0-baseline</span>. This captures the live ECharts dashboard, alternate dashboards, collectors, docs, and compose wiring.</p></div>
           <div class="event done"><h3>PR #6 opened</h3><p>Committed and opened the repository hygiene/security PR from fork branch <span class="mono">security/repo-hygiene-main</span>. It removes tracked configured secret manifests and adds a Cloudflare tunnel secret example template.</p></div>
           <div class="event done"><h3>Web tracker exposed</h3><p>Published this tracker at <a href="https://cicd.sprees.net/ci-cd-tracker.html">https://cicd.sprees.net/ci-cd-tracker.html</a> via a local systemd static server and the existing Cloudflare tunnel.</p></div>
-          <div class="event next"><h3>PR #7 opened as draft: CI-only</h3><p>Added a CI-only workflow on branch <span class="mono">ci/v1-after-hygiene-checks</span>. It validates syntax, Docker Compose config, and repository hygiene. It does not deploy.</p></div>
+          <div class="event done"><h3>CI-only workflow merged</h3><p>Added and proved the CI-only workflow for syntax, Docker Compose config, and repository hygiene. It does not deploy.</p></div>
+          <div class="event done"><h3>Production release workflow merged and proven</h3><p>Added the manual, tag-gated, approval-gated production release workflow in PR #6, fixed scheduling in PR #8, proved rollback routing/dry-run in PR #9, proved tagged deploy dry-run in PR #10, and completed the first real managed production deploy in PR #11 / run <span class="mono">29159055177</span>.</p></div>
         </div>
       </section>
 
