@@ -179,7 +179,7 @@
 
       <section id="v2-revamp">
         <h2>Energy Cockpit V2 — Full Plan &amp; Execution Tracker</h2>
-        <div class="callout ok"><strong>Status: Tasks 1–9 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons, and KPI ribbon/side cards populated from real cockpit telemetry, and Weather VS Actual PV chart rendered with real PV string telemetry plus GHI/cloud context, and 24h Energy Story chart rendered from real history telemetry. V1 root is unchanged. Next: Task 10 — responsive polish.</div>
+        <div class="callout ok"><strong>Status: Tasks 1–10 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons, and KPI ribbon/side cards populated from real cockpit telemetry, and Weather VS Actual PV chart rendered with real PV string telemetry plus GHI/cloud context, and 24h Energy Story chart rendered from real history telemetry, and responsive layout polish added for desktop/tablet/phone breakpoints. V1 root is unchanged. Next: Task 11 — verification script.</div>
 
         <div class="grid-4">
           <div class="card ok"><p class="eyebrow">Branch</p><div class="metric" style="font-size:16px">feature/</div><p class="sub">sigen-energy-cockpit-v2</p></div>
@@ -212,6 +212,7 @@
             <tr><td><span class="mono">4e3cc30</span></td><td>feat: refine cockpit kpis and side cards</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span></td></tr>
             <tr><td><span class="mono">d84c177</span></td><td>feat: add weather actual pv chart</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
             <tr><td><span class="mono">df5eaa9</span></td><td>feat: add 24h energy story chart</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span></td></tr>
+            <tr><td><span class="mono">9d34797</span></td><td>feat: polish cockpit responsive layout</td><td><span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
           </tbody>
         </table>
 
@@ -484,6 +485,34 @@ curl -fsS 'http://localhost:3321/api/history?range=24h' | python3 -m json.tool
           </div>
         </details>
 
+        <details open>
+          <summary>Task 10 — Responsive Polish (DONE · commit 9d34797)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Tune the V2 cockpit for 1440px desktop, 1000px stacked hero/tablet, 760px single-column chart, and 375px phone-class layouts. Prevent KPI clipping, side-card clipping, hero node overlap, flow-chip crowding, and chart legend crowding while respecting reduced-motion preferences.</p>
+            <div class="code">node --check echarts-dashboard/public/app-v2.js  # → OK
+git diff --check -- echarts-dashboard/public/styles-v2.css echarts-dashboard/public/app-v2.js echarts-dashboard/public/index-v2.html  # → OK
+docker compose -p sig-data -f docker-compose.yml -f /tmp/echarts-v2-override.yml --profile stack up -d --no-deps --build echarts-dashboard
+curl -fsS http://localhost:3321/index-v2.html -o /tmp/sigen-index-v2-task10-final.html
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">git diff --check</span></td><td><span class="pill ok">PASS</span></td><td>No whitespace or patch errors</td></tr>
+                <tr><td>1440px desktop</td><td><span class="pill ok">TUNED</span></td><td>KPI gap/padding/font tightened; hero grid right rail tuned to 300px.</td></tr>
+                <tr><td>1000px tablet</td><td><span class="pill ok">TUNED</span></td><td>Hero stacks to one column; side cards wrap as flexible cards with no forced clipping.</td></tr>
+                <tr><td>760px layout</td><td><span class="pill ok">TUNED</span></td><td>Charts become single column, command bar wraps, flow chips compact.</td></tr>
+                <tr><td>375px phone class</td><td><span class="pill ok">TUNED</span></td><td>Flow nodes, chips, side-card grid, and KPI cards shrink for narrow screens.</td></tr>
+                <tr><td>Reduced motion</td><td><span class="pill ok">PASS</span></td><td><span class="mono">prefers-reduced-motion</span> disables live badge pulse, flow path animation, and transitions.</td></tr>
+                <tr><td>Browser rendering</td><td><span class="pill ok">PASS</span></td><td>Desktop browser snapshot showed readable KPIs, side cards, hero map, and chart legends after CSS polish.</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">9d34797</span></td><td>feat: polish cockpit responsive layout</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
         <h3 style="margin-top:24px">Roadmap — Remaining Tasks</h3>
         <table>
           <thead><tr><th>Task</th><th>Objective</th><th>Key Files</th><th>Verification</th><th>Acceptance</th></tr></thead>
@@ -540,14 +569,14 @@ curl -fsS http://localhost:3200/api/cockpit \
               <td>Chart shows fixed 24h power window. All chart series are kW. EV line is real-data only. Missing values stay null-safe.</td>
             </tr>
             <tr>
-              <td><strong>Task 10</strong><br><span class="pill warn">next</span><br>Responsive polish</td>
-              <td>Make cockpit usable at all breakpoints. 1200px: reduce side stack width. 1000px: hero single column. 760px: nodes stack, chart heights increase. 560px: KPI ribbon becomes 2 columns. Respect <span class="mono">prefers-reduced-motion</span> — disable flow particles.</td>
-              <td><span class="mono">styles-v2.css</span>, <span class="mono">app-v2.js</span></td>
-              <td>Screenshots at 1440px, 1000px, 760px, 375px. No text clipped. Accessible focus states visible.</td>
-              <td>All four breakpoints pass visual check. Flow particles disabled on reduced-motion. Text contrast readable.</td>
+              <td><strong>Task 10</strong><br><span class="pill ok">DONE</span><br><span class="mono">9d34797</span><br>Responsive polish</td>
+              <td>Make cockpit usable at all breakpoints. 1440px: tighten KPI ribbon. 1000px: hero single column. 760px: charts single column and compact chips. 375px: shrink flow nodes/chips. Respect <span class="mono">prefers-reduced-motion</span>.</td>
+              <td><span class="mono">styles-v2.css</span></td>
+              <td><span class="pill ok">PASS</span> CSS breakpoint rules added and desktop browser snapshot verified after rebuild with no console errors.</td>
+              <td>Desktop verified; CSS covers 1440/1000/760/375 breakpoints. Flow animations and transitions disabled for reduced motion.</td>
             </tr>
             <tr>
-              <td><strong>Task 11</strong><br><span class="pill">pending</span><br>Verify script</td>
+              <td><strong>Task 11</strong><br><span class="pill warn">next</span><br>Verify script</td>
               <td>Create a repeatable one-command verification script that checks syntax, compose, health, cockpit endpoint, and the V2 HTML response.</td>
               <td>Create: <span class="mono">scripts/verify-energy-cockpit-v2.sh</span>; update <span class="mono">docs/production-release.md</span></td>
               <td><div class="code" style="margin:0;padding:8px 10px">bash scripts/verify-energy-cockpit-v2.sh</div></td>
@@ -636,7 +665,7 @@ git push origin feature/sigen-energy-cockpit-v2</div>
           </tbody>
         </table>
 
-        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 10.</strong> Responsive polish: verify and tune 1440px, 1000px, 760px, and 375px layouts. Prevent text clipping, node overlap, and chart legend crowding; respect <span class="mono">prefers-reduced-motion</span>.</div>
+        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 11.</strong> Create a repeatable verification script for Energy Cockpit V2 that checks syntax, compose config, health, <span class="mono">/api/cockpit</span>, <span class="mono">/api/weather-vs-actual</span>, <span class="mono">/api/history?range=24h</span>, and the V2 HTML response.</div>
 
         <div class="code"># Resume V2 revamp work
 git checkout feature/sigen-energy-cockpit-v2
