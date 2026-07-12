@@ -395,6 +395,255 @@
     }
   }
 
+  // ── Weather VS Actual PV chart ───────────────────────────────────────────────
+
+  let weatherChart = null;
+  let weatherTimer = null;
+
+  const WX_COLORS = {
+    panel: '#101722', border: '#273347', text: '#edf4ff', muted: '#91a4bd',
+    cloud: '#60a5fa', ghi: '#fbbf24', pvAgg: '#35d07f',
+    pv1_power: '#35d07f', pv2_power: '#22d3ee', pv3_power: '#f59e0b', pv4_power: '#60a5fa',
+  };
+  const PV_FIELDS = ['pv1_power', 'pv2_power', 'pv3_power', 'pv4_power'];
+
+  // Keep null as null (no telemetry); never coerce missing points to 0.
+  function nullableNumber(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const x = Number(value);
+    return Number.isFinite(x) ? x : null;
+  }
+
+  function initWeatherChart() {
+    const node = el('weather-actual-chart-v2');
+    if (!node || typeof echarts === 'undefined') return;
+    weatherChart = echarts.init(node);
+    window.addEventListener('resize', function() {
+      if (weatherChart) weatherChart.resize();
+    });
+  }
+
+  function showWeatherEmpty(subtext) {
+    if (!weatherChart) return;
+    weatherChart.clear();
+    weatherChart.setOption({
+      backgroundColor: 'transparent',
+      title: {
+        text: 'Weather VS Actual PV',
+        subtext: subtext || 'No data available',
+        left: 'center', top: 'center',
+        textStyle: { color: WX_COLORS.muted, fontSize: 14 },
+        subtextStyle: { color: WX_COLORS.muted, fontSize: 12 },
+      },
+    });
+  }
+
+  function renderWeatherActual(payload) {
+    if (!weatherChart) return;
+    const rows = Array.isArray(payload && payload.rows) ? payload.rows : [];
+    if (!rows.length) { showWeatherEmpty('No data available'); return; }
+
+    const tz = (payload && payload.timezone) || 'Asia/Bangkok';
+    const fmtTz = function(iso) {
+      if (!iso) return '';
+      try { return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz }); }
+      catch (_) { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+    };
+
+    // Per-string PV (clamped ≥0, null preserved) + aggregate fallback.
+    const pvStringData = {};
+    PV_FIELDS.forEach(function(f) {
+      pvStringData[f] = rows.map(function(r) {
+        const v = nullableNumber(r[f]);
+        return v !== null ? Math.max(0, v) : null;
+      });
+    });
+    const hasStringData = PV_FIELDS.some(function(f) {
+      return pvStringData[f].some(function(v) { return v !== null; });
+    });
+    const pvAggData = rows.map(function(r) {
+      const v = nullableNumber(r.pv_power);
+      return v !== null ? Math.max(0, v) : null;
+    });
+
+    const cloudData = rows.map(function(r) { return [r.time, nullableNumber(r.cloud_cover)]; });
+    const ghiData = rows.map(function(r) { return [r.time, nullableNumber(r.shortwave_radiation)]; });
+    const xLabels = rows.map(function(r) { return fmtTz(r.time); });
+
+    const validGhi = ghiData.map(function(d) { return d[1]; }).filter(function(v) { return v !== null; });
+    const maxGhi = validGhi.length ? Math.max.apply(null, validGhi) : 200;
+    const validPv = (hasStringData
+      ? rows.map(function(r, i) {
+          const vals = PV_FIELDS.map(function(f) { return pvStringData[f][i]; }).filter(function(v) { return v !== null; });
+          return vals.length ? vals.reduce(function(a, b) { return a + b; }, 0) : null;
+        })
+      : pvAggData).filter(function(v) { return v !== null; });
+    const maxPv = validPv.length ? Math.max.apply(null, validPv) : 5;
+
+    // Note the real data source so aggregate fallback is never mistaken for per-string data.
+    const note = el('weather-actual-note');
+    if (note) {
+      note.textContent = hasStringData
+        ? 'Real PV1–PV4 string telemetry (stacked kW) · GHI · cloud cover'
+        : 'Aggregate PV power only — no per-string telemetry (' + ((payload && payload.source) || 'sigen') + ') · GHI · cloud cover';
+    }
+
+    const pvSeries = hasStringData
+      ? PV_FIELDS.map(function(f, idx) {
+          return {
+            name: f.slice(0, 3).toUpperCase(),
+            type: 'bar',
+            stack: 'pv_actual',
+            yAxisIndex: 2,
+            data: rows.map(function(r, i) { return [r.time, pvStringData[f][i]]; }),
+            barMaxWidth: 28,
+            itemStyle: {
+              color: WX_COLORS[f],
+              borderRadius: idx === PV_FIELDS.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0],
+            },
+            z: 2,
+          };
+        })
+      : [{
+          name: 'PV (agg kW)',
+          type: 'bar',
+          stack: 'pv_actual',
+          yAxisIndex: 2,
+          data: rows.map(function(r, i) { return [r.time, pvAggData[i]]; }),
+          barMaxWidth: 28,
+          itemStyle: { color: WX_COLORS.pvAgg, borderRadius: [4, 4, 0, 0] },
+          z: 2,
+        }];
+
+    const legendData = ['Cloud Cover (%)', 'GHI (W/m²)'].concat(
+      hasStringData ? PV_FIELDS.map(function(f) { return f.slice(0, 3).toUpperCase(); }) : ['PV (agg kW)']
+    );
+
+    weatherChart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        appendToBody: true,
+        confine: false,
+        backgroundColor: WX_COLORS.panel,
+        borderColor: WX_COLORS.border,
+        borderWidth: 1,
+        textStyle: { color: WX_COLORS.text, fontSize: 12 },
+        extraCssText: 'z-index:9999;max-width:280px;padding:9px 12px;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.55);',
+        formatter: function(params) {
+          const cc = params.find(function(p) { return p.seriesName === 'Cloud Cover (%)'; });
+          const i = cc ? cc.dataIndex : (params[0] ? params[0].dataIndex : null);
+          if (i == null) return '';
+          const r = rows[i] || {};
+          const dot = function(c) { return '<span style="display:inline-block;width:9px;height:9px;background:' + c + ';border-radius:50%;margin-right:5px;"></span>'; };
+          const line = function(d, label, val) {
+            return '<div style="display:flex;justify-content:space-between;gap:14px;">' + d +
+              '<span style="color:#91a4bd;">' + label + '</span><span style="font-weight:600;">' + val + '</span></div>';
+          };
+          const na = '<span style="color:#91a4bd;font-style:italic;">No data</span>';
+          let tip = '<div style="margin-bottom:5px;font-weight:700;">' + (xLabels[i] || '') + '</div>';
+          const ghi = nullableNumber(r.shortwave_radiation);
+          tip += line(dot(WX_COLORS.ghi), 'GHI (W/m²)', ghi !== null ? ghi.toFixed(0) : '—');
+          const cloud = nullableNumber(r.cloud_cover);
+          tip += line(dot(WX_COLORS.cloud), 'Cloud (%)', cloud !== null ? cloud.toFixed(0) : '—');
+          if (hasStringData) {
+            let total = null;
+            PV_FIELDS.forEach(function(f) {
+              const v = pvStringData[f][i];
+              if (v !== null) total = (total || 0) + v;
+              tip += line(dot(WX_COLORS[f]), f.slice(0, 3).toUpperCase() + ' (kW)', v !== null ? v.toFixed(2) : na);
+            });
+            tip += line(dot('#ffffff'), 'Total PV (kW)', total !== null ? '<b>' + total.toFixed(2) + '</b>' : na);
+          } else {
+            const v = nullableNumber(r.pv_power);
+            tip += line(dot(WX_COLORS.pvAgg), 'PV agg (kW)', v !== null ? Math.max(0, v).toFixed(2) : na);
+          }
+          return tip;
+        },
+      },
+      legend: {
+        bottom: 2, left: 'center',
+        textStyle: { color: WX_COLORS.muted, fontSize: 11 },
+        itemGap: 12,
+        data: legendData,
+      },
+      grid: { left: 46, right: 52, top: 16, bottom: 46 },
+      xAxis: {
+        type: 'time',
+        boundaryGap: false,
+        axisLabel: {
+          color: WX_COLORS.muted, fontSize: 10,
+          formatter: function(value) {
+            try { return new Date(value).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz }); }
+            catch (_) { return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+          },
+        },
+        axisLine: { lineStyle: { color: WX_COLORS.border } },
+        splitLine: { show: false },
+      },
+      yAxis: [
+        {
+          type: 'value', name: '%', min: 0, max: 100, position: 'left',
+          axisLabel: { color: WX_COLORS.muted, formatter: '{value}%', fontSize: 10 },
+          axisLine: { lineStyle: { color: WX_COLORS.border } },
+          splitLine: { lineStyle: { color: WX_COLORS.border, type: 'dashed' } },
+          nameTextStyle: { color: WX_COLORS.muted, fontSize: 10 },
+        },
+        {
+          type: 'value', name: 'W/m²', min: 0,
+          max: Math.max(200, Math.ceil(maxGhi * 1.25 / 100) * 100), position: 'right',
+          axisLabel: { color: WX_COLORS.ghi, fontSize: 9 },
+          axisLine: { show: true, lineStyle: { color: WX_COLORS.ghi, opacity: 0.4 } },
+          splitLine: { show: false },
+          nameTextStyle: { color: WX_COLORS.ghi, fontSize: 9 },
+        },
+        {
+          type: 'value', name: 'kW', min: 0,
+          max: Math.max(1, Math.ceil(maxPv * 1.3)), position: 'right', offset: 40,
+          axisLabel: { color: WX_COLORS.pvAgg, fontSize: 9 },
+          axisLine: { show: true, lineStyle: { color: WX_COLORS.pvAgg, opacity: 0.4 } },
+          splitLine: { show: false },
+          nameTextStyle: { color: WX_COLORS.pvAgg, fontSize: 9 },
+        },
+      ],
+      series: [
+        {
+          name: 'Cloud Cover (%)', type: 'line', yAxisIndex: 0, data: cloudData,
+          smooth: 0.4, symbol: 'none', lineStyle: { color: WX_COLORS.cloud, width: 2 },
+          areaStyle: {
+            color: {
+              type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(96,165,250,0.32)' },
+                { offset: 1, color: 'rgba(96,165,250,0.03)' },
+              ],
+            },
+          },
+          z: 1,
+        },
+        {
+          name: 'GHI (W/m²)', type: 'line', yAxisIndex: 1, data: ghiData,
+          smooth: 0.3, symbol: 'circle', showSymbol: false, symbolSize: 4,
+          lineStyle: { color: WX_COLORS.ghi, width: 2.5 },
+          itemStyle: { color: WX_COLORS.ghi }, z: 1,
+        },
+      ].concat(pvSeries),
+    }, true);
+  }
+
+  function fetchWeatherActual() {
+    if (!weatherChart) return Promise.resolve();
+    return fetch('/api/weather-vs-actual')
+      .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function(data) { renderWeatherActual(data); })
+      .catch(function() { /* keep last good render; slow poll retries */ });
+  }
+
+  function scheduleWeatherRefresh() {
+    clearInterval(weatherTimer);
+    weatherTimer = setInterval(fetchWeatherActual, 60000);
+  }
+
   // ── Fetch loop ───────────────────────────────────────────────────────────────
 
   function fetchCockpit() {
@@ -460,8 +709,10 @@
     setText('station-state', '—');
     setText('grid-state', '—');
 
+    initWeatherChart();
     fetchHealthMeta();
     fetchCockpit().then(scheduleRefresh);
+    fetchWeatherActual().then(scheduleWeatherRefresh);
   }
 
   if (document.readyState === 'loading') {

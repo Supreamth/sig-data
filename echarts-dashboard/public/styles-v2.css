@@ -671,6 +671,11 @@ body {
   color: var(--muted);
 }
 
+.chart-v2 {
+  height: 320px;
+  width: 100%;
+}
+
 .chart-ph {
   height: 200px;
   display: flex;
