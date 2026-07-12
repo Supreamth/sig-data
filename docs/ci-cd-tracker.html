@@ -179,7 +179,7 @@
 
       <section id="v2-revamp">
         <h2>Energy Cockpit V2 — Full Plan &amp; Execution Tracker</h2>
-        <div class="callout ok"><strong>Status: Tasks 1–8 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons, and KPI ribbon/side cards populated from real cockpit telemetry, and Weather VS Actual PV chart rendered with real PV string telemetry plus GHI/cloud context. V1 root is unchanged. Next: Task 9 — 24h Energy Story.</div>
+        <div class="callout ok"><strong>Status: Tasks 1–9 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons, and KPI ribbon/side cards populated from real cockpit telemetry, and Weather VS Actual PV chart rendered with real PV string telemetry plus GHI/cloud context, and 24h Energy Story chart rendered from real history telemetry. V1 root is unchanged. Next: Task 10 — responsive polish.</div>
 
         <div class="grid-4">
           <div class="card ok"><p class="eyebrow">Branch</p><div class="metric" style="font-size:16px">feature/</div><p class="sub">sigen-energy-cockpit-v2</p></div>
@@ -211,6 +211,7 @@
             <tr><td><span class="mono">7bd5373</span></td><td>feat: refine energy intent card</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
             <tr><td><span class="mono">4e3cc30</span></td><td>feat: refine cockpit kpis and side cards</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span></td></tr>
             <tr><td><span class="mono">d84c177</span></td><td>feat: add weather actual pv chart</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
+            <tr><td><span class="mono">df5eaa9</span></td><td>feat: add 24h energy story chart</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span></td></tr>
           </tbody>
         </table>
 
@@ -454,6 +455,35 @@ curl -fsS http://localhost:3321/api/weather-vs-actual | python3 -m json.tool
           </div>
         </details>
 
+        <details open>
+          <summary>Task 9 — 24h Energy Story (DONE · commit df5eaa9)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Replace the 24h Energy Story placeholder with a fixed 24-hour ECharts view using <span class="mono">/api/history?range=24h</span>. Keep all series in kW and split signed telemetry into readable import/export and charge/discharge stories.</p>
+            <div class="code">node --check echarts-dashboard/server.js          # → OK
+node --check echarts-dashboard/public/app-v2.js  # → OK
+docker compose -p sig-data -f docker-compose.yml -f /tmp/echarts-v2-override.yml --profile stack up -d --no-deps --build echarts-dashboard
+curl -fsS 'http://localhost:3321/api/history?range=24h' | python3 -m json.tool
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">/api/history?range=24h</span></td><td><span class="pill ok">PASS</span></td><td>Returned real 24h series for PV, load, grid flow, battery power, battery SOC, and EV power.</td></tr>
+                <tr><td>Chart series</td><td><span class="pill ok">VISIBLE</span></td><td>Browser showed PV, Home Load, Grid Import, Grid Export, Battery Charge, Battery Discharge, and EV when real EV series exists.</td></tr>
+                <tr><td>Units</td><td><span class="pill ok">kW ONLY</span></td><td>Chart uses power series only; no kWh mixed into the 24h story chart.</td></tr>
+                <tr><td>Sign handling</td><td><span class="pill ok">PASS</span></td><td>Signed grid and battery telemetry split into import/export and charge/discharge without changing source data.</td></tr>
+                <tr><td>Null/zero handling</td><td><span class="pill ok">PASS</span></td><td>Missing points remain null/absent; measured zero remains zero. EV shown only from real <span class="mono">ev_power</span>.</td></tr>
+                <tr><td>Tooltip safety</td><td><span class="pill ok">IMPLEMENTED</span></td><td>ECharts tooltip uses <span class="mono">appendToBody</span> and clipping-safe styling.</td></tr>
+                <tr><td>Browser rendering</td><td><span class="pill ok">PASS</span></td><td>Placeholder replaced by chart canvas; legend and lines readable with no layout overlap.</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">df5eaa9</span></td><td>feat: add 24h energy story chart</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
         <h3 style="margin-top:24px">Roadmap — Remaining Tasks</h3>
         <table>
           <thead><tr><th>Task</th><th>Objective</th><th>Key Files</th><th>Verification</th><th>Acceptance</th></tr></thead>
@@ -503,14 +533,14 @@ curl -fsS http://localhost:3200/api/cockpit \
               <td>Stacked bars use real PV string data. Aggregate fallback is labelled when needed. Tooltip is body-appended. Null remains null.</td>
             </tr>
             <tr>
-              <td><strong>Task 9</strong><br><span class="pill warn">next</span><br>24h Energy Story</td>
+              <td><strong>Task 9</strong><br><span class="pill ok">DONE</span><br><span class="mono">df5eaa9</span><br>24h Energy Story</td>
               <td>Fixed 24h history chart (not range-linked). Series: PV power, home load, grid import/export, battery charge/discharge, EV power if present. Fetch <span class="mono">/api/history?range=24h</span>.</td>
-              <td><span class="mono">app-v2.js</span>, <span class="mono">index-v2.html</span></td>
-              <td>Chart always shows 24h window. kW lines not mixed with kWh unless clearly labelled.</td>
-              <td>Chart shows exactly 24h. All five series render. Units correct. EV line absent if no data.</td>
+              <td><span class="mono">server.js</span>, <span class="mono">app-v2.js</span>, <span class="mono">index-v2.html</span></td>
+              <td><span class="pill ok">PASS</span> Browser snapshot confirmed chart canvas with PV, load, grid import/export, battery charge/discharge, and EV when real telemetry exists.</td>
+              <td>Chart shows fixed 24h power window. All chart series are kW. EV line is real-data only. Missing values stay null-safe.</td>
             </tr>
             <tr>
-              <td><strong>Task 10</strong><br><span class="pill">pending</span><br>Responsive polish</td>
+              <td><strong>Task 10</strong><br><span class="pill warn">next</span><br>Responsive polish</td>
               <td>Make cockpit usable at all breakpoints. 1200px: reduce side stack width. 1000px: hero single column. 760px: nodes stack, chart heights increase. 560px: KPI ribbon becomes 2 columns. Respect <span class="mono">prefers-reduced-motion</span> — disable flow particles.</td>
               <td><span class="mono">styles-v2.css</span>, <span class="mono">app-v2.js</span></td>
               <td>Screenshots at 1440px, 1000px, 760px, 375px. No text clipped. Accessible focus states visible.</td>
@@ -606,7 +636,7 @@ git push origin feature/sigen-energy-cockpit-v2</div>
           </tbody>
         </table>
 
-        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 9.</strong> Build the fixed 24h Energy Story chart using <span class="mono">/api/history?range=24h</span>: PV, load, grid import/export, battery charge/discharge, and EV power if present. Keep units correct and missing EV data absent/null-safe.</div>
+        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 10.</strong> Responsive polish: verify and tune 1440px, 1000px, 760px, and 375px layouts. Prevent text clipping, node overlap, and chart legend crowding; respect <span class="mono">prefers-reduced-motion</span>.</div>
 
         <div class="code"># Resume V2 revamp work
 git checkout feature/sigen-energy-cockpit-v2
