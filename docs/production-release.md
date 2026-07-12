@@ -277,3 +277,15 @@ Cloudflare -> reverse proxy -> 127.0.0.1:3200 -> container echarts-dashboard
    - repointed `/opt/sigen-production/current` to the `v1.0.0` release
 7. Post-deploy checks confirmed production public health HTTP 200, staging public
    health HTTP 200, and the staging container unchanged.
+
+## Next planned lifecycle test
+
+The next safe release exercise is documented in
+[`docs/v1.0.1-lifecycle-test-plan.md`](v1.0.1-lifecycle-test-plan.md). It is a
+gate-by-gate plan for a tiny `v1.0.1` change: PR + CI, staging dry-run and real
+staging deploy, tag `v1.0.1` from green `main`, production deploy dry-run, real
+production deploy only after explicit approval, and rollback dry-run to
+`/opt/sigen-production/releases/v1.0.0` once a second managed release exists.
+
+Do not perform a real production deploy or rollback as part of planning. Each
+runtime gate requires its own evidence and explicit approval.
