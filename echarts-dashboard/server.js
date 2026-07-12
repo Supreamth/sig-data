@@ -617,6 +617,7 @@ from(bucket: "${INFLUXDB_BUCKET}")
 
   const pvKwh = integrateKwh(byField.pv_power || [], v => Math.max(0, v));
   const gridImportKwh = integrateKwh(byField.grid_flow_power || [], v => Math.max(0, -v));
+  const gridExportKwh = integrateKwh(byField.grid_flow_power || [], v => Math.max(0, v));
   const batteryDischargeKwh = integrateKwh(byField.battery_power || [], v => Math.max(0, -v));
   const generatorKwh = byField.generator_power
     ? integrateKwh(byField.generator_power, v => Math.max(0, v))
@@ -631,6 +632,7 @@ from(bucket: "${INFLUXDB_BUCKET}")
   const sources = {
     pv_solar: parseFloat(pvKwh.toFixed(3)),
     grid_import: parseFloat(gridImportKwh.toFixed(3)),
+    grid_export: parseFloat(gridExportKwh.toFixed(3)),
     battery_discharge: parseFloat(batteryDischargeKwh.toFixed(3)),
   };
   if (generatorKwh !== null) sources.generator = parseFloat(generatorKwh.toFixed(3));
@@ -3027,6 +3029,35 @@ function buildCockpitDataQuality(snapshot) {
   return { latest_time: ts, age_seconds, stale };
 }
 
+function buildCockpitKpis(snapshot) {
+  const daily = snapshot.daily || {};
+  const mix = daily.energy_sources_today;
+
+  const gridIdleHours = typeof daily.grid_idle_hours === 'number' ? daily.grid_idle_hours : null;
+  const gridIdleMinutes = typeof daily.grid_idle_minutes === 'number' ? daily.grid_idle_minutes : null;
+  const gridCostThb = typeof daily.grid_cost_thb_today === 'number' ? daily.grid_cost_thb_today : null;
+  const gridCostRateThb = daily.grid_cost_rate_thb_per_kwh || null;
+  const gridImportKwh = typeof daily.grid_import_kwh_today === 'number' ? daily.grid_import_kwh_today : null;
+
+  let selfUsePct = null;
+  if (mix && mix.sources) {
+    const pvKwh = mix.sources.pv_solar || 0;
+    const gridExportKwh = mix.sources.grid_export || 0;
+    if (pvKwh > 0) {
+      selfUsePct = parseFloat(Math.min(100, Math.max(0, (pvKwh - gridExportKwh) / pvKwh * 100)).toFixed(1));
+    }
+  }
+
+  return {
+    grid_idle_hours: gridIdleHours,
+    grid_idle_minutes: gridIdleMinutes,
+    grid_cost_thb: gridCostThb,
+    grid_cost_rate_thb_per_kwh: gridCostRateThb,
+    grid_import_kwh: gridImportKwh,
+    self_use_pct: selfUsePct,
+  };
+}
+
 // ── End cockpit helpers ──────────────────────────────────────────────────────
 
 app.use(express.json({ limit: '64kb' }));
@@ -3177,6 +3208,7 @@ app.get('/api/cockpit', async (req, res) => {
       dc_charger: buildCockpitDcCharger(e),
       tesla: buildCockpitTesla(teslaData),
       weather: buildCockpitWeather(snapshot.weather || {}),
+      kpis: buildCockpitKpis(snapshot),
       data_quality: dataQuality,
     });
   } catch (err) {

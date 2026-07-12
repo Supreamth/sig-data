@@ -41,6 +41,15 @@
     return val.toFixed(decimals !== undefined ? decimals : 2);
   }
 
+  function fmtMode(mode) {
+    if (mode === 'charging') return 'Charging';
+    if (mode === 'discharging') return 'Discharging';
+    if (mode === 'idle') return 'Idle';
+    if (mode === 'unknown') return 'Unknown';
+    if (mode === 'no_data') return 'No telemetry';
+    return mode ? String(mode) : '—';
+  }
+
   // ── Live / offline state ─────────────────────────────────────────────────────
 
   function applyLiveState(data) {
@@ -123,8 +132,7 @@
       setText('kpi-soc-sub', '—');
     } else {
       setText('kpi-soc', Math.round(lat.battery_soc) + '%');
-      const mode = (data.battery || {}).mode;
-      setText('kpi-soc-sub', mode || '—');
+      setText('kpi-soc-sub', fmtMode((data.battery || {}).mode));
     }
 
     // Weather
@@ -137,7 +145,38 @@
       setText('kpi-weather', '—');
       setText('kpi-weather-sub', 'No data');
     }
-    // Grid idle, grid cost, self-use: not in cockpit response — leave at dash
+
+    // Grid Idle 24h
+    const kpis = data.kpis || {};
+    if (isNullish(kpis.grid_idle_hours)) {
+      setText('kpi-grid-idle', '—');
+      setText('kpi-grid-idle-sub', 'No data');
+    } else {
+      setText('kpi-grid-idle', kpis.grid_idle_hours.toFixed(1) + 'h');
+      setText('kpi-grid-idle-sub', !isNullish(kpis.grid_idle_minutes)
+        ? Math.round(kpis.grid_idle_minutes) + ' min idle today'
+        : 'of 24h idle today');
+    }
+
+    // Grid Cost Today
+    if (isNullish(kpis.grid_cost_thb)) {
+      setText('kpi-grid-cost', '—');
+      setText('kpi-grid-cost-sub', 'No data');
+    } else {
+      setText('kpi-grid-cost', kpis.grid_cost_thb.toFixed(2));
+      setText('kpi-grid-cost-sub', !isNullish(kpis.grid_cost_rate_thb_per_kwh)
+        ? '฿ at ฿' + kpis.grid_cost_rate_thb_per_kwh.toFixed(2) + '/kWh'
+        : 'No data');
+    }
+
+    // Self-use
+    if (isNullish(kpis.self_use_pct)) {
+      setText('kpi-self-use', '—');
+      setText('kpi-self-use-sub', 'No data');
+    } else {
+      setText('kpi-self-use', kpis.self_use_pct.toFixed(1) + '%');
+      setText('kpi-self-use-sub', 'Self-consumption rate');
+    }
   }
 
   // ── Energy Intent card ───────────────────────────────────────────────────────
@@ -186,7 +225,8 @@
   function applyBattery(data) {
     const batt = data.battery || {};
 
-    setText('battery-mode-badge', batt.mode || '—');
+    const modeRaw = batt.mode;
+    setText('battery-mode-badge', (!modeRaw || modeRaw === 'no_data') ? 'No telemetry' : fmtMode(modeRaw));
 
     const soc = batt.soc;
     const ring = el('soc-ring');
