@@ -6,9 +6,14 @@ and no `pull_request` deploy path. Every production action is manual, requires
 an exact confirmation phrase and a semantic version tag, and must be approved
 through the GitHub `production` environment.
 
-> **Status:** scaffold only / next gated step. No production self-hosted runner
-> and no `production` environment are registered yet, so the workflow will queue
-> but not execute. Nothing here has been deployed. See the CI/CD tracker.
+> **Status:** live and proven. The `production` environment and separate
+> `sigen-production` self-hosted runner are configured. Release `v1.0.0` was
+> first proven by dry-run run
+> [`29158829022`](https://github.com/Supreamth/sig-data/actions/runs/29158829022),
+> then deployed for real in run
+> [`29159055177`](https://github.com/Supreamth/sig-data/actions/runs/29159055177).
+> `/opt/sigen-production/current` now points to
+> `/opt/sigen-production/releases/v1.0.0`.
 
 ## What this covers
 
@@ -55,7 +60,7 @@ vMAJOR.MINOR.PATCH-suffix   e.g. v1.1.0-rc1
 Create tags only from a protected `main` commit after CI has passed. The deploy
 job checks out `refs/tags/<release_tag>`.
 
-## Prerequisites (not yet configured)
+## Prerequisites (configured for V1.0)
 
 1. **Self-hosted runner** registered for `Supreamth/sig-data` with the labels:
 
@@ -63,9 +68,8 @@ job checks out `refs/tags/<release_tag>`.
    self-hosted, linux, sigen-production
    ```
 
-   Prefer a **separate** runner service from staging even on the same VPS. Do
-   not reuse the `sigen-staging` label. No such runner is registered yet, so the
-   deploy job will not start.
+   The V1.0 production runner is registered separately from staging as
+   `sigen-production-srv1698440`; do not reuse the `sigen-staging` label.
 
 2. **GitHub environment** named `production` with a required reviewer
    (`Supreamth`). If Supreamth is the sole reviewer, keep
@@ -142,6 +146,15 @@ Each deploy is a tag-named release directory, and `current` is a symlink to the
 active release. Rolling back repoints the symlink to a previous release and
 restarts only the production dashboard from that release's compose file.
 
+Current V1.0 caveat: this was the first managed production deploy. There was no
+previous managed production release symlink before `v1.0.0`, and the managed
+release root currently contains only `/opt/sigen-production/releases/v1.0.0`.
+Rollback to an older managed release becomes available after a future release
+creates another release directory. Until then, emergency recovery means either
+re-running the known-good `v1.0.0` deploy or manually restoring the pre-managed
+legacy container/state from server backups or the preserved legacy runtime
+configuration.
+
 Via the workflow:
 
 - `mode`: `rollback`
@@ -186,16 +199,20 @@ Cloudflare -> reverse proxy -> 127.0.0.1:3200 -> container echarts-dashboard
   env:       /root/projects/sig-data/.env (never printed)
 ```
 
-## Activation sequence (post-merge, separately approved)
+## V1.0 execution record
 
-This scaffold does not deploy. Production activation is a distinct, separately
-approved step:
-
-1. Create/update the GitHub `production` environment and required reviewer.
-2. Register the `sigen-production` self-hosted runner (separate from staging).
-3. Trigger a **dry-run** deploy (`dry_run: true`) and confirm nothing changed.
-4. Only after dry-run evidence and explicit approval, trigger a **real** deploy
-   (`dry_run: false`) and approve the `production` environment gate.
-5. Verify run success, local + public production health (HTTP 200), unchanged
-   staging health, the container/image changed, and `current` points to the
-   deployed release. Update the tracker.
+1. Production scaffold merged via PR #6.
+2. Workflow scheduling fix merged via PR #8.
+3. Production environment + runner routing was proved by rollback dry-run run
+   `29158346834`.
+4. Release tag `v1.0.0` points to commit `2770f039`.
+5. Tagged deploy dry-run succeeded in run `29158829022` and changed nothing.
+6. First real production deploy succeeded in run `29159055177`:
+   - checked out `refs/tags/v1.0.0`
+   - created `/opt/sigen-production/releases/v1.0.0`
+   - built only `echarts-dashboard`
+   - replaced only the exact `/echarts-dashboard` container
+   - passed local health at `http://127.0.0.1:3200/api/health`
+   - repointed `/opt/sigen-production/current` to the `v1.0.0` release
+7. Post-deploy checks confirmed production public health HTTP 200, staging public
+   health HTTP 200, and the staging container unchanged.
