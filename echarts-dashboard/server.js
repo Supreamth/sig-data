@@ -3355,7 +3355,7 @@ app.post('/api/telegram/send-alert-test', async (req, res) => {
 app.get('/api/history', async (req, res) => {
   try {
     const fields = ['pv_power', 'load_power', 'grid_flow_power', 'battery_power',
-      'battery_soc', 'pv_day_nrg', 'on_grid', 'station_status', 'grid_idle'];
+      'battery_soc', 'pv_day_nrg', 'on_grid', 'station_status', 'grid_idle', 'ev_power'];
     const fieldFilter = fields.map(f => `r._field == "${f}"`).join(' or ');
 
     if (req.query.date) {

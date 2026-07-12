@@ -644,6 +644,181 @@
     weatherTimer = setInterval(fetchWeatherActual, 60000);
   }
 
+  // ── 24h Energy Story chart ───────────────────────────────────────────────────
+
+  let storyChart = null;
+  let storyTimer = null;
+
+  const STORY_TZ = 'Asia/Bangkok';
+  const STORY_COLORS = {
+    panel: '#101722', border: '#273347', text: '#edf4ff', muted: '#91a4bd',
+    pv: '#35d07f', load: '#f59e0b', gridImport: '#ef4444', gridExport: '#22d3ee',
+    battCharge: '#a78bfa', battDischarge: '#60a5fa', ev: '#ec4899',
+  };
+
+  function initStoryChart() {
+    const node = el('story-24h-chart');
+    if (!node || typeof echarts === 'undefined') return;
+    storyChart = echarts.init(node);
+    window.addEventListener('resize', function() {
+      if (storyChart) storyChart.resize();
+    });
+  }
+
+  function showStoryEmpty(subtext) {
+    if (!storyChart) return;
+    storyChart.clear();
+    storyChart.setOption({
+      backgroundColor: 'transparent',
+      title: {
+        text: '24h Energy Story',
+        subtext: subtext || 'No data available',
+        left: 'center', top: 'center',
+        textStyle: { color: STORY_COLORS.muted, fontSize: 14 },
+        subtextStyle: { color: STORY_COLORS.muted, fontSize: 12 },
+      },
+    });
+  }
+
+  // Map a signed-power series into a split, clamped [time, value] series.
+  // Missing points are simply absent (server drops nulls); measured 0 stays 0.
+  function splitSeries(points, transform) {
+    return (points || []).map(function(p) {
+      const v = nullableNumber(p.value);
+      return [p.time, v !== null ? transform(v) : null];
+    });
+  }
+
+  function storyFmtTime(iso) {
+    try { return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: STORY_TZ }); }
+    catch (_) { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+  }
+
+  function renderStory(payload) {
+    if (!storyChart) return;
+    const series = (payload && payload.series) || {};
+
+    const pvData = splitSeries(series.pv_power, function(v) { return Math.max(0, v); });
+    const loadData = splitSeries(series.load_power, function(v) { return Math.max(0, v); });
+    // Sign convention (matches server integrations): grid_flow_power < 0 → import, > 0 → export.
+    const gridImportData = splitSeries(series.grid_flow_power, function(v) { return Math.max(0, -v); });
+    const gridExportData = splitSeries(series.grid_flow_power, function(v) { return Math.max(0, v); });
+    // battery_power > 0 → charging, < 0 → discharging.
+    const battChargeData = splitSeries(series.battery_power, function(v) { return Math.max(0, v); });
+    const battDischargeData = splitSeries(series.battery_power, function(v) { return Math.max(0, -v); });
+
+    // EV only when a real, non-null, non-zero series exists — never fabricated.
+    const evPoints = series.ev_power || [];
+    const hasEv = Array.isArray(evPoints) && evPoints.some(function(p) {
+      const v = nullableNumber(p.value);
+      return v !== null && v !== 0;
+    });
+    const evData = hasEv ? splitSeries(evPoints, function(v) { return Math.max(0, v); }) : null;
+
+    const hasAny = [pvData, loadData, gridImportData, battChargeData].some(function(d) {
+      return d.some(function(pt) { return pt[1] !== null; });
+    });
+    if (!hasAny) { showStoryEmpty('No data in the last 24 hours'); return; }
+
+    const lineSeries = function(name, data, color, area) {
+      const s = {
+        name: name, type: 'line', data: data,
+        smooth: 0.25, symbol: 'none', connectNulls: false,
+        lineStyle: { color: color, width: 2 },
+        itemStyle: { color: color }, z: 2,
+      };
+      if (area) {
+        s.areaStyle = {
+          color: {
+            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: color + '55' },
+              { offset: 1, color: color + '05' },
+            ],
+          },
+        };
+        s.z = 1;
+      }
+      return s;
+    };
+
+    const allSeries = [
+      lineSeries('PV (kW)', pvData, STORY_COLORS.pv, true),
+      lineSeries('Home Load (kW)', loadData, STORY_COLORS.load, false),
+      lineSeries('Grid Import (kW)', gridImportData, STORY_COLORS.gridImport, false),
+      lineSeries('Grid Export (kW)', gridExportData, STORY_COLORS.gridExport, false),
+      lineSeries('Battery Charge (kW)', battChargeData, STORY_COLORS.battCharge, false),
+      lineSeries('Battery Discharge (kW)', battDischargeData, STORY_COLORS.battDischarge, false),
+    ];
+    if (hasEv) allSeries.push(lineSeries('EV (kW)', evData, STORY_COLORS.ev, false));
+
+    const legendData = allSeries.map(function(s) { return s.name; });
+
+    storyChart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        appendToBody: true,
+        confine: true,
+        backgroundColor: STORY_COLORS.panel,
+        borderColor: STORY_COLORS.border,
+        borderWidth: 1,
+        textStyle: { color: STORY_COLORS.text, fontSize: 12 },
+        extraCssText: 'z-index:9999;max-width:260px;padding:9px 12px;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.55);',
+        formatter: function(params) {
+          if (!params || !params.length) return '';
+          const dot = function(c) { return '<span style="display:inline-block;width:9px;height:9px;background:' + c + ';border-radius:50%;margin-right:5px;"></span>'; };
+          let tip = '<div style="margin-bottom:5px;font-weight:700;">' + storyFmtTime(params[0].axisValue) + '</div>';
+          params.forEach(function(p) {
+            const v = p.value && p.value.length > 1 ? p.value[1] : null;
+            const txt = (v === null || v === undefined) ? '<span style="color:#91a4bd;font-style:italic;">No data</span>' : v.toFixed(2);
+            tip += '<div style="display:flex;justify-content:space-between;gap:14px;">' + dot(p.color) +
+              '<span style="color:#91a4bd;">' + p.seriesName + '</span><span style="font-weight:600;">' + txt + '</span></div>';
+          });
+          return tip;
+        },
+      },
+      legend: {
+        bottom: 2, left: 'center',
+        textStyle: { color: STORY_COLORS.muted, fontSize: 11 },
+        itemGap: 10,
+        data: legendData,
+      },
+      grid: { left: 46, right: 18, top: 16, bottom: 52 },
+      xAxis: {
+        type: 'time',
+        boundaryGap: false,
+        axisLabel: {
+          color: STORY_COLORS.muted, fontSize: 10,
+          formatter: function(value) { return storyFmtTime(value); },
+        },
+        axisLine: { lineStyle: { color: STORY_COLORS.border } },
+        splitLine: { show: false },
+      },
+      yAxis: {
+        type: 'value', name: 'kW', min: 0, position: 'left',
+        axisLabel: { color: STORY_COLORS.muted, fontSize: 10 },
+        axisLine: { lineStyle: { color: STORY_COLORS.border } },
+        splitLine: { lineStyle: { color: STORY_COLORS.border, type: 'dashed' } },
+        nameTextStyle: { color: STORY_COLORS.muted, fontSize: 10 },
+      },
+      series: allSeries,
+    }, true);
+  }
+
+  function fetchStory() {
+    if (!storyChart) return Promise.resolve();
+    return fetch('/api/history?range=24h')
+      .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function(data) { renderStory(data); })
+      .catch(function() { /* keep last good render; slow poll retries */ });
+  }
+
+  function scheduleStoryRefresh() {
+    clearInterval(storyTimer);
+    storyTimer = setInterval(fetchStory, 60000);
+  }
+
   // ── Fetch loop ───────────────────────────────────────────────────────────────
 
   function fetchCockpit() {
@@ -710,9 +885,11 @@
     setText('grid-state', '—');
 
     initWeatherChart();
+    initStoryChart();
     fetchHealthMeta();
     fetchCockpit().then(scheduleRefresh);
     fetchWeatherActual().then(scheduleWeatherRefresh);
+    fetchStory().then(scheduleStoryRefresh);
   }
 
   if (document.readyState === 'loading') {
