@@ -20,6 +20,9 @@ data/*.lock
 # Agent/local artifacts
 .hermes/
 
+# Local/deferred experiments
+ev-solar-flow/
+
 # Node/build artifacts
 node_modules/
 **/node_modules/
