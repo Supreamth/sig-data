@@ -179,7 +179,7 @@
 
       <section id="v2-revamp">
         <h2>Energy Cockpit V2 — Full Plan &amp; Execution Tracker</h2>
-        <div class="callout ok"><strong>Status: Tasks 1–6 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons. V1 root is unchanged. Next: Task 7 — KPI ribbon & side card refinement.</div>
+        <div class="callout ok"><strong>Status: Tasks 1–7 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons, and KPI ribbon/side cards populated from real cockpit telemetry. V1 root is unchanged. Next: Task 8 — Weather VS Actual PV.</div>
 
         <div class="grid-4">
           <div class="card ok"><p class="eyebrow">Branch</p><div class="metric" style="font-size:16px">feature/</div><p class="sub">sigen-energy-cockpit-v2</p></div>
@@ -209,6 +209,7 @@
             <tr><td><span class="mono">d679a08</span></td><td>feat: wire cockpit v2 to live telemetry</td><td><span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
             <tr><td><span class="mono">fdfaf0b</span></td><td>feat: add cockpit hero power flow</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
             <tr><td><span class="mono">7bd5373</span></td><td>feat: refine energy intent card</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
+            <tr><td><span class="mono">4e3cc30</span></td><td>feat: refine cockpit kpis and side cards</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span></td></tr>
           </tbody>
         </table>
 
@@ -396,6 +397,34 @@ curl -fsS http://localhost:3321/api/cockpit | python3 -m json.tool
           </div>
         </details>
 
+        <details open>
+          <summary>Task 7 — KPI Ribbon &amp; Side Cards (DONE · commit 4e3cc30)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Finalize the bento KPI ribbon and side cards with real cockpit data, correct units, and null-safe display. KPI order preserved: PV Now, Home Load, Grid Flow, Grid Idle 24h, Grid Cost Today, Battery SOC, Weather, Self-use.</p>
+            <div class="code">node --check echarts-dashboard/server.js          # → OK
+node --check echarts-dashboard/public/app-v2.js  # → OK
+docker compose -p sig-data -f docker-compose.yml -f /tmp/echarts-v2-override.yml --profile stack up -d --no-deps --build echarts-dashboard
+curl -fsS http://localhost:3321/api/cockpit | python3 -m json.tool
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">/api/cockpit.kpis</span></td><td><span class="pill ok">PASS</span></td><td>Returned grid idle hours/minutes, grid cost THB, import kWh, rate, and self-use pct from real daily energy data.</td></tr>
+                <tr><td>KPI ribbon</td><td><span class="pill ok">VISIBLE</span></td><td>Browser showed all 8 tiles: PV, Home, Grid, Grid Idle 24h, Grid Cost Today, Battery SOC, Weather, Self-use.</td></tr>
+                <tr><td>Observed KPI values</td><td><span class="pill ok">LIVE</span></td><td>Example: Grid Idle 9.0h / 542 min, Grid Cost 54.91 THB, Self-use 100.0%, Weather 28°C.</td></tr>
+                <tr><td>Battery side card</td><td><span class="pill ok">PASS</span></td><td>Status badge, SOC ring, kW, stored kWh, and remaining/charging estimate readable with units.</td></tr>
+                <tr><td>DC Charger / Tesla</td><td><span class="pill ok">PASS</span></td><td>Load-bus route preserved; power/status/route rendered with no direct Battery→DC path.</td></tr>
+                <tr><td>Null safety</td><td><span class="pill ok">PASS</span></td><td>Unavailable fields render as <span class="mono">—</span>, <span class="mono">No data</span>, or <span class="mono">No telemetry</span>; measured zero remains a real 0.</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">4e3cc30</span></td><td>feat: refine cockpit kpis and side cards</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
         <h3 style="margin-top:24px">Roadmap — Remaining Tasks</h3>
         <table>
           <thead><tr><th>Task</th><th>Objective</th><th>Key Files</th><th>Verification</th><th>Acceptance</th></tr></thead>
@@ -431,14 +460,14 @@ curl -fsS http://localhost:3200/api/cockpit \
               <td>Intent is deterministic from telemetry. Includes concise evidence lines from real kW values. No LLM-generated text.</td>
             </tr>
             <tr>
-              <td><strong>Task 7</strong><br><span class="pill warn">next</span><br>KPI ribbon &amp; side cards</td>
+              <td><strong>Task 7</strong><br><span class="pill ok">DONE</span><br><span class="mono">4e3cc30</span><br>KPI ribbon &amp; side cards</td>
               <td>Finalize bento KPI ribbon order (PV Now, Home Load, Grid Flow, Grid Idle 24h, Grid Cost Today, Battery SOC, Weather, Self-use) and right-side Battery Details + DC Charger/Tesla mini-cards.</td>
-              <td><span class="mono">index-v2.html</span>, <span class="mono">app-v2.js</span>, <span class="mono">styles-v2.css</span></td>
-              <td>Null shown as "No data" not "0". Tabular numbers align. KPI order matches spec.</td>
-              <td>8 KPI slots visible at desktop. Side cards show correct units. Missing EV/module data shown as No data.</td>
+              <td><span class="mono">server.js</span>, <span class="mono">index-v2.html</span>, <span class="mono">app-v2.js</span></td>
+              <td><span class="pill ok">PASS</span> Browser snapshot confirmed all 8 KPI tiles and side cards render live values with correct units and no console errors.</td>
+              <td>8 KPI slots visible at desktop. Side cards show correct units. Missing data remains null-safe; measured 0 remains 0.</td>
             </tr>
             <tr>
-              <td><strong>Task 8</strong><br><span class="pill">pending</span><br>Weather VS Actual PV</td>
+              <td><strong>Task 8</strong><br><span class="pill warn">next</span><br>Weather VS Actual PV</td>
               <td>Rebuild the PV/weather diagnostic chart. PV1–PV4 stacked bars from real string telemetry; aggregate fallback only if strings unavailable and clearly labelled. GHI/shortwave radiation as line. Tooltip appended to body to prevent clipping.</td>
               <td><span class="mono">app-v2.js</span>, <span class="mono">styles-v2.css</span></td>
               <td>Tooltip not clipped at panel edge. Future/missing PV is null not zero. Legend readable.</td>
@@ -548,7 +577,7 @@ git push origin feature/sigen-energy-cockpit-v2</div>
           </tbody>
         </table>
 
-        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 7.</strong> Finalize the KPI ribbon and side cards: add/verify Grid Idle 24h, Grid Cost Today, Weather, Self-use, Battery Details, and DC Charger/Tesla with correct units and null-safe display. Verify tabular numbers, no fake telemetry, and zero console errors.</div>
+        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 8.</strong> Build the Weather VS Actual PV diagnostic chart using real PV1–PV4 string telemetry where available, clear aggregate fallback only when strings are unavailable, and GHI/cloud/weather context. Verify tooltips, null handling, and zero console errors.</div>
 
         <div class="code"># Resume V2 revamp work
 git checkout feature/sigen-energy-cockpit-v2
