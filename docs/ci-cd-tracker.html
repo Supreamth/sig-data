@@ -179,7 +179,7 @@
 
       <section id="v2-revamp">
         <h2>Energy Cockpit V2 — Full Plan &amp; Execution Tracker</h2>
-        <div class="callout ok"><strong>Status: Tasks 1–4 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry. V1 root is unchanged. Next: Task 5 — hero power flow canvas.</div>
+        <div class="callout ok"><strong>Status: Tasks 1–5 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built and browser-verified. V1 root is unchanged. Next: Task 6 — Energy Intent card refinement.</div>
 
         <div class="grid-4">
           <div class="card ok"><p class="eyebrow">Branch</p><div class="metric" style="font-size:16px">feature/</div><p class="sub">sigen-energy-cockpit-v2</p></div>
@@ -207,6 +207,7 @@
             <tr><td><span class="mono">8030b8d</span></td><td>feat: add energy cockpit v2 prototype shell</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span> (241 lines), <span class="mono">echarts-dashboard/public/styles-v2.css</span> (653 lines), <span class="mono">echarts-dashboard/public/app-v2.js</span> (131 lines)</td></tr>
             <tr><td><span class="mono">a8efc6d</span></td><td>feat: add cockpit telemetry endpoint</td><td><span class="mono">echarts-dashboard/server.js</span></td></tr>
             <tr><td><span class="mono">d679a08</span></td><td>feat: wire cockpit v2 to live telemetry</td><td><span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
+            <tr><td><span class="mono">fdfaf0b</span></td><td>feat: add cockpit hero power flow</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
           </tbody>
         </table>
 
@@ -336,6 +337,38 @@ curl -fsS http://localhost:3321/index-v2.html | wc -c   # → 8196 bytes
           </div>
         </details>
 
+        <details open>
+          <summary>Task 5 — Hero Power Flow Canvas (DONE · commit fdfaf0b)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Build the animated power flow canvas centerpiece. Nodes: PV Array, Grid, Home/Load Bus, Battery, DC Charger, Tesla (contextual). Animated flows only when telemetry active. Inactive flows shown as dim guides. No Battery→DC Charger path; EV path is Load Bus→DC Charger→Tesla.</p>
+            <div class="code">node --check echarts-dashboard/public/app-v2.js    # → OK
+# Rebuilt temp compose container on localhost:3321
+curl -fsS http://localhost:3321/index-v2.html | wc -c   # → 9725 bytes
+wc -c echarts-dashboard/public/app-v2.js               # → 14423 bytes
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td>Temp compose container</td><td><span class="pill ok">localhost:3321</span></td><td>Rebuilt for isolated verification</td></tr>
+                <tr><td><span class="mono">index-v2.html</span> size</td><td><span class="pill ok">9725 bytes</span></td><td>Hero canvas markup added</td></tr>
+                <tr><td><span class="mono">app-v2.js</span> size</td><td><span class="pill ok">14423 bytes</span></td><td>Power flow logic added</td></tr>
+                <tr><td>PV Array node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>Grid node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>Home Load Bus node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>Battery node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>DC Charger node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>Tesla node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>PV→Home flow chips</td><td><span class="pill ok">ACTIVE</span></td><td>Animated chips visible — active telemetry-derived flow</td></tr>
+                <tr><td>Home→Battery flow chips</td><td><span class="pill ok">ACTIVE</span></td><td>Animated chips visible — battery charging from excess PV</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">fdfaf0b</span></td><td>feat: add cockpit hero power flow</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
         <h3 style="margin-top:24px">Roadmap — Remaining Tasks</h3>
         <table>
           <thead><tr><th>Task</th><th>Objective</th><th>Key Files</th><th>Verification</th><th>Acceptance</th></tr></thead>
@@ -357,14 +390,14 @@ curl -fsS http://localhost:3200/api/cockpit \
               <td>LIVE badge updates. KPI values render from real data. OFFLINE state appears if backend stops. Real zero and null are distinct.</td>
             </tr>
             <tr>
-              <td><strong>Task 5</strong><br><span class="pill warn">next</span><br>Hero power flow</td>
+              <td><strong>Task 5</strong><br><span class="pill ok">DONE</span><br><span class="mono">fdfaf0b</span><br>Hero power flow</td>
               <td>Build the animated power flow canvas centerpiece. Nodes: PV Array, Home/Load Bus, Grid, Battery, DC Charger, Tesla (contextual). Animated flows only when telemetry active. Inactive flows shown as dim guides.</td>
               <td><span class="mono">app-v2.js</span>, <span class="mono">styles-v2.css</span>, <span class="mono">public/assets/power-flow-icons/*.svg</span></td>
               <td>Browser screenshots at desktop and 760–860px. No node overlap. Flow direction correct.</td>
               <td>No Battery→DC Charger path. EV path is Load Bus→DC Charger→Tesla. Battery directions match telemetry sign. No overlap at 760px.</td>
             </tr>
             <tr>
-              <td><strong>Task 6</strong><br><span class="pill">pending</span><br>Energy Intent card</td>
+              <td><strong>Task 6</strong><br><span class="pill warn">next</span><br>Energy Intent card</td>
               <td>Add human-readable intent derived deterministically from telemetry. Examples: "Using solar for home load", "Charging battery from excess PV", "Importing grid for home load", "Exporting solar surplus", "Battery supporting evening load".</td>
               <td><span class="mono">server.js</span>, <span class="mono">app-v2.js</span>, <span class="mono">index-v2.html</span></td>
               <td>Inspect <span class="mono">/api/cockpit</span> intent field. Manually verify multiple states. If data is stale, intent shows "Waiting for fresh telemetry".</td>
@@ -488,7 +521,7 @@ git push origin feature/sigen-energy-cockpit-v2</div>
           </tbody>
         </table>
 
-        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 5.</strong> Build the animated hero Power Flow canvas in <span class="mono">app-v2.js</span> and <span class="mono">styles-v2.css</span>. Use live <span class="mono">/api/cockpit</span> flows, show PV / Home / Grid / Battery / DC Charger / Tesla nodes, animate only active telemetry-derived flows, keep inactive guides dim, and preserve the load-side route <span class="mono">Home / Load Bus → DC Charger → Tesla Model Y</span>. Verify with <span class="mono">node --check app-v2.js</span>, browser screenshot, and zero console errors.</div>
+        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 6.</strong> Refine the Energy Intent card so it explains the current system state with deterministic, evidence-backed copy. Keep examples such as <span class="mono">Using solar for home load</span>, <span class="mono">Charging battery from excess PV</span>, <span class="mono">Importing grid for home load</span>, <span class="mono">Exporting solar surplus</span>, and <span class="mono">Battery supporting evening load</span>. Verify <span class="mono">/api/cockpit.intent</span>, browser rendering, and zero console errors.</div>
 
         <div class="code"># Resume V2 revamp work
 git checkout feature/sigen-energy-cockpit-v2
