@@ -179,7 +179,7 @@
 
       <section id="v2-revamp">
         <h2>Energy Cockpit V2 — Full Plan &amp; Execution Tracker</h2>
-        <div class="callout ok"><strong>Status: Task 1 &amp; Task 2 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed. V1 root is unchanged. Next: Task 3 — add <span class="mono">/api/cockpit</span> backend endpoint.</div>
+        <div class="callout ok"><strong>Status: Tasks 1–4 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry. V1 root is unchanged. Next: Task 5 — hero power flow canvas.</div>
 
         <div class="grid-4">
           <div class="card ok"><p class="eyebrow">Branch</p><div class="metric" style="font-size:16px">feature/</div><p class="sub">sigen-energy-cockpit-v2</p></div>
@@ -205,6 +205,8 @@
           <tbody>
             <tr><td><span class="mono">ff9423a</span></td><td>docs: baseline energy cockpit v2 revamp</td><td><span class="mono">docs/ci-cd-tracker.html</span>, <span class="mono">docs/sigen-energy-cockpit-v2-baseline.md</span></td></tr>
             <tr><td><span class="mono">8030b8d</span></td><td>feat: add energy cockpit v2 prototype shell</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span> (241 lines), <span class="mono">echarts-dashboard/public/styles-v2.css</span> (653 lines), <span class="mono">echarts-dashboard/public/app-v2.js</span> (131 lines)</td></tr>
+            <tr><td><span class="mono">a8efc6d</span></td><td>feat: add cockpit telemetry endpoint</td><td><span class="mono">echarts-dashboard/server.js</span></td></tr>
+            <tr><td><span class="mono">d679a08</span></td><td>feat: wire cockpit v2 to live telemetry</td><td><span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
           </tbody>
         </table>
 
@@ -277,12 +279,69 @@ git commit -m "feat: add energy cockpit v2 prototype shell"</div>
           </div>
         </details>
 
+        <details open>
+          <summary>Task 3 — Add /api/cockpit endpoint (DONE · commit a8efc6d)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Add a compact, cockpit-shaped backend endpoint to <span class="mono">server.js</span> that returns <span class="mono">status, latest, intent, flows, battery, dc_charger, tesla, data_quality</span>. Derive intent and flows from signed telemetry fields. Preserve all existing endpoints.</p>
+            <div class="code">node --check echarts-dashboard/server.js          # → OK
+docker compose config                             # → valid (no errors)
+# Temp compose container for isolated verification
+docker compose -f docker-compose.test.yml up -d echarts-dashboard-v2-test-compose
+# Container served on localhost:3321
+curl -fsS http://localhost:3321/api/cockpit | python3 -m json.tool</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">docker compose config</span></td><td><span class="pill ok">PASS</span></td><td>Stack config valid</td></tr>
+                <tr><td>Temp container</td><td><span class="pill ok">localhost:3321</span></td><td><span class="mono">echarts-dashboard-v2-test-compose</span> served for isolated verification</td></tr>
+                <tr><td><span class="mono">/api/cockpit status</span></td><td><span class="pill ok">ok</span></td><td>Response: <span class="mono">{"status":"ok",...}</span></td></tr>
+                <tr><td><span class="mono">pv_power</span></td><td><span class="pill ok">9.40–11.90 kW</span></td><td>Live range observed during verification</td></tr>
+                <tr><td><span class="mono">load_power</span></td><td><span class="pill ok">5.40 / 4.80 kW</span></td><td>Observed values across polling windows</td></tr>
+                <tr><td>Grid</td><td><span class="pill ok">idle</span></td><td>Grid flow at 0, idle state confirmed</td></tr>
+                <tr><td>Battery</td><td><span class="pill ok">charging</span></td><td>Battery charging from excess PV</td></tr>
+                <tr><td>Tesla VIN</td><td><span class="pill ok">no VIN</span></td><td>No Tesla VIN present — dc_charger/tesla fields null-safe</td></tr>
+                <tr><td><span class="mono">data_quality.stale</span></td><td><span class="pill ok">false</span></td><td>Telemetry fresh during verification</td></tr>
+                <tr><td>Existing endpoints</td><td><span class="pill ok">PASS</span></td><td>All prior endpoints unaffected</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">a8efc6d</span></td><td>feat: add cockpit telemetry endpoint</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 4 — Wire V2 Frontend to Live Telemetry (DONE · commit d679a08)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Connect <span class="mono">app-v2.js</span> to <span class="mono">/api/cockpit</span>. 15-second recursive <span class="mono">setTimeout</span> refresh. OFFLINE state on error. Null shown as "No telemetry", never coerced to 0.</p>
+            <div class="code">node --check echarts-dashboard/public/app-v2.js    # → OK
+# Verify V2 HTML served
+curl -fsS http://localhost:3321/index-v2.html | wc -c   # → 8196 bytes
+# Browser snapshot (localhost:3321/index-v2.html)</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">curl /index-v2.html</span></td><td><span class="pill ok">8196 bytes</span></td><td>Served correctly from test container</td></tr>
+                <tr><td>LIVE badge</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed LIVE badge displayed</td></tr>
+                <tr><td>KPI values</td><td><span class="pill ok">RENDER</span></td><td>KPI ribbon showing live PV, load, grid, battery values</td></tr>
+                <tr><td>Power Flow chips</td><td><span class="pill ok">PRESENT</span></td><td>Flow direction chips visible in browser snapshot</td></tr>
+                <tr><td>Battery card</td><td><span class="pill ok">PRESENT</span></td><td>Battery SOC and charge/discharge state rendered</td></tr>
+                <tr><td>DC Charger / Tesla</td><td><span class="pill ok">PRESENT</span></td><td>DC charger card shown; Tesla shown with no VIN (null-safe)</td></tr>
+                <tr><td>Data Health</td><td><span class="pill ok">PRESENT</span></td><td>Data quality / staleness indicator rendered</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>No errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">d679a08</span></td><td>feat: wire cockpit v2 to live telemetry</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
         <h3 style="margin-top:24px">Roadmap — Remaining Tasks</h3>
         <table>
           <thead><tr><th>Task</th><th>Objective</th><th>Key Files</th><th>Verification</th><th>Acceptance</th></tr></thead>
           <tbody>
             <tr>
-              <td><strong>Task 3</strong><br><span class="pill warn">next</span><br><span class="mono">/api/cockpit</span></td>
+              <td><strong>Task 3</strong><br><span class="pill ok">DONE</span><br><span class="mono">/api/cockpit</span></td>
               <td>Add compact cockpit-shaped backend endpoint to <span class="mono">server.js</span>. Returns <span class="mono">status, latest, intent, flows, battery, dc_charger, tesla, data_quality</span>. Derive intent and flows from signed telemetry fields. Preserve all existing endpoints.</td>
               <td><span class="mono">echarts-dashboard/server.js</span></td>
               <td><div class="code" style="margin:0;padding:8px 10px">node --check echarts-dashboard/server.js
@@ -291,14 +350,14 @@ curl -fsS http://localhost:3200/api/cockpit \
               <td>Returns JSON with <span class="mono">status:"ok"</span>. Missing telemetry is <span class="mono">null</span> not <span class="mono">0</span>. No secrets in response. Existing endpoints still respond.</td>
             </tr>
             <tr>
-              <td><strong>Task 4</strong><br><span class="pill">pending</span><br>Wire live data</td>
+              <td><strong>Task 4</strong><br><span class="pill ok">DONE</span><br>Wire live data</td>
               <td>Connect <span class="mono">app-v2.js</span> to <span class="mono">/api/cockpit</span>. 15s recursive setTimeout refresh. OFFLINE state on error. Null shown as "No telemetry", never coerced to 0.</td>
               <td><span class="mono">app-v2.js</span>, <span class="mono">index-v2.html</span>, <span class="mono">styles-v2.css</span></td>
               <td><div class="code" style="margin:0;padding:8px 10px">node --check echarts-dashboard/public/app-v2.js</div>Browser: LIVE badge, KPI values, no JS errors, OFFLINE on backend stop.</td>
               <td>LIVE badge updates. KPI values render from real data. OFFLINE state appears if backend stops. Real zero and null are distinct.</td>
             </tr>
             <tr>
-              <td><strong>Task 5</strong><br><span class="pill">pending</span><br>Hero power flow</td>
+              <td><strong>Task 5</strong><br><span class="pill warn">next</span><br>Hero power flow</td>
               <td>Build the animated power flow canvas centerpiece. Nodes: PV Array, Home/Load Bus, Grid, Battery, DC Charger, Tesla (contextual). Animated flows only when telemetry active. Inactive flows shown as dim guides.</td>
               <td><span class="mono">app-v2.js</span>, <span class="mono">styles-v2.css</span>, <span class="mono">public/assets/power-flow-icons/*.svg</span></td>
               <td>Browser screenshots at desktop and 760–860px. No node overlap. Flow direction correct.</td>
@@ -383,7 +442,7 @@ git push origin v1.1.0</div>Production deploy via existing release workflow (<sp
           <tbody>
             <tr><td><strong>Stage 0</strong> — Discovery &amp; Freeze</td><td>Reproducible baseline before any UI changes. Branch created, API probed, baseline docs captured.</td><td>Task 1</td><td><span class="pill ok">DONE</span> No production restart. V1 unchanged.</td></tr>
             <tr><td><strong>Stage 1</strong> — V2 Prototype Route</td><td>Add V2 entry point beside V1. Static shell served at <span class="mono">/index-v2.html</span> without touching V1 root.</td><td>Task 2</td><td><span class="pill ok">DONE</span> Files committed. 404 until container rebuild (Task 12).</td></tr>
-            <tr><td><strong>Stage 2</strong> — Data Contract</td><td>Add <span class="mono">/api/cockpit</span> shaped endpoint. Wire V2 frontend to live telemetry. LIVE/OFFLINE state, null-safe rendering.</td><td>Tasks 3–4</td><td><span class="pill warn">in progress</span> <span class="mono">curl /api/cockpit</span> returns valid JSON. V2 shows real data.</td></tr>
+            <tr><td><strong>Stage 2</strong> — Data Contract</td><td>Add <span class="mono">/api/cockpit</span> shaped endpoint. Wire V2 frontend to live telemetry. LIVE/OFFLINE state, null-safe rendering.</td><td>Tasks 3–4</td><td><span class="pill ok">DONE</span> <span class="mono">curl /api/cockpit</span> returns valid JSON. V2 shows real data. LIVE badge confirmed in browser.</td></tr>
             <tr><td><strong>Stage 3</strong> — Visual Revamp</td><td>Implement polished cockpit UI: hero flow canvas, intent card, KPI ribbon, side cards, 24h story, responsive breakpoints.</td><td>Tasks 5–10</td><td><span class="pill">pending</span> Browser screenshots at desktop/tablet/mobile readable. No JS errors.</td></tr>
             <tr><td><strong>Stage 4</strong> — Staging, Root Switch, Release</td><td>Rebuild container, browser-verify, get user approval, switch root, tag and deploy to production.</td><td>Tasks 11–14</td><td><span class="pill">pending</span> Health OK. User approves screenshots. Rollback documented.</td></tr>
           </tbody>
@@ -429,7 +488,7 @@ git push origin feature/sigen-energy-cockpit-v2</div>
           </tbody>
         </table>
 
-        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 3.</strong> Add <span class="mono">GET /api/cockpit</span> to <span class="mono">echarts-dashboard/server.js</span>. The endpoint must return <span class="mono">status, latest, intent, flows, battery, dc_charger, tesla, data_quality</span> with nullable numerics and deterministic intent derived from signed telemetry fields. Verify with <span class="mono">node --check server.js &amp;&amp; curl -fsS http://localhost:3200/api/cockpit | python3 -m json.tool</span>.</div>
+        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 5.</strong> Build the animated hero Power Flow canvas in <span class="mono">app-v2.js</span> and <span class="mono">styles-v2.css</span>. Use live <span class="mono">/api/cockpit</span> flows, show PV / Home / Grid / Battery / DC Charger / Tesla nodes, animate only active telemetry-derived flows, keep inactive guides dim, and preserve the load-side route <span class="mono">Home / Load Bus → DC Charger → Tesla Model Y</span>. Verify with <span class="mono">node --check app-v2.js</span>, browser screenshot, and zero console errors.</div>
 
         <div class="code"># Resume V2 revamp work
 git checkout feature/sigen-energy-cockpit-v2
