@@ -226,15 +226,80 @@
     ev_charging:      'chip-dc',
   };
 
+  const FLOW_LINE_IDS = {
+    solar: 'line-pv-home',
+    grid_import: 'line-grid-home',
+    grid_export: 'line-home-grid',
+    battery_charge: 'line-home-battery',
+    battery_discharge: 'line-battery-home',
+    ev_charging: 'line-home-dc',
+  };
+
+  function resetFlowMap() {
+    ['line-pv-home', 'line-grid-home', 'line-home-grid', 'line-home-battery', 'line-battery-home', 'line-home-dc', 'line-dc-tesla'].forEach(function(id) {
+      const line = el(id);
+      if (line) line.classList.remove('active', 'reverse');
+    });
+    ['node-pv', 'node-grid', 'node-home', 'node-battery', 'node-dc', 'node-tesla'].forEach(function(id) {
+      const node = el(id);
+      if (node) node.classList.remove('active', 'idle');
+    });
+  }
+
+  function setNodeState(id, active, idle) {
+    const node = el(id);
+    if (!node) return;
+    node.classList.toggle('active', !!active);
+    node.classList.toggle('idle', !!idle && !active);
+  }
+
+  function flowValueText(val) {
+    return isNullish(val) ? '—' : val.toFixed(2) + ' kW';
+  }
+
   function applyFlows(data) {
     const flows = Array.isArray(data.flows) ? data.flows : [];
     const canvas = el('flow-canvas');
+    const lat = data.latest || {};
     if (!canvas) return;
+
+    resetFlowMap();
+
+    setText('flow-pv-value', flowValueText(lat.pv_power));
+    setText('flow-home-value', flowValueText(lat.load_power));
+    setText('flow-grid-value', flowValueText(lat.grid_flow_power));
+    setText('flow-battery-value', isNullish(lat.battery_power) ? '—' : flowValueText(Math.abs(lat.battery_power)));
+    setText('flow-dc-value', flowValueText(lat.ev_power));
 
     const existing = el('flow-chips');
     if (existing) existing.remove();
 
     const active = flows.filter(function(f) { return f.active; });
+    const empty = el('flow-empty');
+    if (empty) empty.hidden = active.length > 0;
+
+    flows.forEach(function(f) {
+      const lineId = FLOW_LINE_IDS[f.type];
+      const line = lineId ? el(lineId) : null;
+      if (line && f.active) line.classList.add('active');
+
+      if (f.type === 'solar') setNodeState('node-pv', f.active, true);
+      if (f.type === 'grid_import' || f.type === 'grid_export' || f.type === 'grid_idle') setNodeState('node-grid', f.active, true);
+      if (f.type === 'battery_charge' || f.type === 'battery_discharge' || f.type === 'battery_idle') setNodeState('node-battery', f.active, true);
+      if (f.type === 'ev_charging') {
+        setNodeState('node-dc', true, false);
+        setNodeState('node-tesla', true, false);
+        const teslaLine = el('line-dc-tesla');
+        if (teslaLine) teslaLine.classList.add('active');
+      }
+    });
+
+    setNodeState('node-home', active.length > 0, active.length === 0);
+    if (!flows.some(function(f) { return f.type === 'ev_charging' && f.active; })) {
+      setNodeState('node-dc', false, true);
+      setNodeState('node-tesla', false, true);
+    }
+
     if (active.length === 0) return;
 
     const wrap = document.createElement('div');
@@ -244,8 +309,9 @@
     active.forEach(function(f) {
       const chip = document.createElement('span');
       const cls = FLOW_TYPE_CLASSES[f.type] || 'chip-muted';
+      const kw = isNullish(f.kw) ? '—' : f.kw.toFixed(2);
       chip.className = 'flow-chip ' + cls;
-      chip.textContent = f.from + ' → ' + f.to + ' · ' + f.kw.toFixed(2) + ' kW';
+      chip.textContent = f.from + ' → ' + f.to + ' · ' + kw + ' kW';
       wrap.appendChild(chip);
     });
 

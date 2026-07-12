@@ -96,11 +96,22 @@
         <p>PV · Home · Grid · Battery — live telemetry</p>
       </div>
       <div id="flow-canvas">
-        <div class="flow-placeholder" aria-hidden="true">
-          <div class="flow-ph-icon">⚡</div>
-          <div class="flow-ph-label">Hero Power Flow</div>
-          <div class="flow-ph-sub">Animated canvas — Task 5</div>
-        </div>
+        <svg class="flow-map-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path id="line-pv-home" class="flow-guide flow-solar" d="M50 20 C50 30 50 38 50 48" />
+          <path id="line-grid-home" class="flow-guide flow-grid" d="M18 58 C28 58 38 54 50 54" />
+          <path id="line-home-grid" class="flow-guide flow-grid" d="M50 57 C38 61 28 64 18 64" />
+          <path id="line-home-battery" class="flow-guide flow-battery" d="M58 55 C68 55 75 58 82 62" />
+          <path id="line-battery-home" class="flow-guide flow-battery" d="M82 56 C72 52 64 50 56 50" />
+          <path id="line-home-dc" class="flow-guide flow-dc" d="M58 63 C68 73 75 80 82 84" />
+          <path id="line-dc-tesla" class="flow-guide flow-dc" d="M82 89 C75 93 64 94 52 92" />
+        </svg>
+        <div class="flow-node node-pv" id="node-pv"><span>☀️</span><small>PV Array</small><strong id="flow-pv-value">—</strong></div>
+        <div class="flow-node node-grid" id="node-grid"><span>⚡</span><small>Grid</small><strong id="flow-grid-value">—</strong></div>
+        <div class="flow-node node-home" id="node-home"><span>🏠</span><small>Home / Load Bus</small><strong id="flow-home-value">—</strong></div>
+        <div class="flow-node node-battery" id="node-battery"><span>🔋</span><small>Battery</small><strong id="flow-battery-value">—</strong></div>
+        <div class="flow-node node-dc" id="node-dc"><span>🔌</span><small>DC Charger</small><strong id="flow-dc-value">—</strong></div>
+        <div class="flow-node node-tesla" id="node-tesla"><span>🚙</span><small>Tesla Model Y</small><strong id="flow-tesla-value">context</strong></div>
+        <div id="flow-empty" class="flow-empty">Waiting for live flow telemetry…</div>
       </div>
     </section>
 
