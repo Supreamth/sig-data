@@ -299,6 +299,19 @@
       margin-bottom: 2px;
     }
 
+    .version-marker {
+      font-size: 11px;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      color: #91a4bd;
+      border: 1px solid rgba(145,164,189,.28);
+      border-radius: 999px;
+      padding: 3px 10px;
+      background: rgba(7,11,18,.35);
+      letter-spacing: .04em;
+      pointer-events: none;
+      user-select: none;
+    }
+
   </style>
 </head>
 <body>
@@ -317,6 +330,7 @@
       <span class="realtime-note" data-i18n="top.realtime">เรียลไทม์ · รีเฟรชอัตโนมัติ 15 วินาที</span>
       <span id="last-updated">กำลังเชื่อมต่อ…</span>
       <span id="status-badge" class="pending">syncing</span>
+      <span class="version-marker" aria-label="Release candidate version">v1.0.1 candidate</span>
     </div>
   </header>
 
