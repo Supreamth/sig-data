@@ -179,7 +179,7 @@
 
       <section id="v2-revamp">
         <h2>Energy Cockpit V2 — Full Plan &amp; Execution Tracker</h2>
-        <div class="callout ok"><strong>Status: Tasks 1–11 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons, and KPI ribbon/side cards populated from real cockpit telemetry, and Weather VS Actual PV chart rendered with real PV string telemetry plus GHI/cloud context, and 24h Energy Story chart rendered from real history telemetry, and responsive layout polish added for desktop/tablet/phone breakpoints, and a repeatable <span class="mono">scripts/verify-energy-cockpit-v2.sh</span> verification script added and proven against the isolated test container on <span class="mono">:3321</span>. V1 root is unchanged. Next: Task 12 — staging / Docker rebuild verify.</div>
+        <div class="callout ok"><strong>Status: Tasks 1–12 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons, and KPI ribbon/side cards populated from real cockpit telemetry, and Weather VS Actual PV chart rendered with real PV string telemetry plus GHI/cloud context, and 24h Energy Story chart rendered from real history telemetry, and responsive layout polish added for desktop/tablet/phone breakpoints, and a repeatable <span class="mono">scripts/verify-energy-cockpit-v2.sh</span> verification script added. Docker verification passed against isolated rebuilt container <span class="mono">echarts-dashboard-v2-task12</span> on <span class="mono">127.0.0.1:3322</span>; browser snapshot showed the cockpit with no console errors. Production <span class="mono">:3200</span> and staging <span class="mono">:3400</span> remained healthy and unchanged. V1 root is unchanged. Next: Task 13 root switch, but only after explicit user approval of the rendered V2.</div>
 
         <div class="grid-4">
           <div class="card ok"><p class="eyebrow">Branch</p><div class="metric" style="font-size:16px">feature/</div><p class="sub">sigen-energy-cockpit-v2</p></div>
@@ -542,6 +542,31 @@ SIGEN_COCKPIT_BASE_URL=http://localhost:3321 bash scripts/verify-energy-cockpit-
           </div>
         </details>
 
+        <details open>
+          <summary>Task 12 — Isolated Docker / Browser Verification (DONE)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Build and run the V2 dashboard as Docker would serve it, without touching the production container on <span class="mono">:3200</span> or staging on <span class="mono">:3400</span>. The isolated verification container is <span class="mono">echarts-dashboard-v2-task12</span> on <span class="mono">127.0.0.1:3322</span>.</p>
+            <div class="code">docker build -t sig-data-echarts-dashboard-v2-task12:latest ./echarts-dashboard
+docker run --name echarts-dashboard-v2-task12 --network sig-data_default -p 127.0.0.1:3322:3200 ...
+SIGEN_COCKPIT_BASE_URL=http://localhost:3322 bash scripts/verify-energy-cockpit-v2.sh
+# Browser: http://localhost:3322/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td>Image build</td><td><span class="pill ok">PASS</span></td><td><span class="mono">sig-data-echarts-dashboard-v2-task12:latest</span> built from current branch</td></tr>
+                <tr><td>Isolated container</td><td><span class="pill ok">PASS</span></td><td><span class="mono">/echarts-dashboard-v2-task12</span> running, mapped to <span class="mono">127.0.0.1:3322</span></td></tr>
+                <tr><td>Verification script</td><td><span class="pill ok">PASS</span></td><td>Target <span class="mono">http://localhost:3322</span>; final line <span class="mono">Energy Cockpit V2 verification OK</span></td></tr>
+                <tr><td><span class="mono">/index-v2.html</span></td><td><span class="pill ok">PASS</span></td><td>Fetched <span class="mono">9625</span> bytes from the rebuilt container</td></tr>
+                <tr><td>Browser render</td><td><span class="pill ok">PASS</span></td><td>Desktop snapshot showed command bar, KPI ribbon, power flow, side cards, Weather VS Actual PV, 24h Energy Story, and Data Health visible with no obvious clipping/overlap</td></tr>
+                <tr><td>Browser console</td><td><span class="pill ok">PASS</span></td><td>Zero console messages and zero JS errors</td></tr>
+                <tr><td>Production health</td><td><span class="pill ok">HTTP 200</span></td><td><span class="mono">/opt/sigen-production/current</span> still points to <span class="mono">/opt/sigen-production/releases/v1.0.0</span></td></tr>
+                <tr><td>Staging health</td><td><span class="pill ok">HTTP 200</span></td><td>Staging container was not rebuilt/restarted by this check</td></tr>
+                <tr><td>Root switch</td><td><span class="pill stop">NOT RUN</span></td><td>Task 13 still requires explicit user approval after reviewing V2</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
         <h3 style="margin-top:24px">Roadmap — Remaining Tasks</h3>
         <table>
           <thead><tr><th>Task</th><th>Objective</th><th>Key Files</th><th>Verification</th><th>Acceptance</th></tr></thead>
@@ -612,13 +637,12 @@ curl -fsS http://localhost:3200/api/cockpit \
               <td>Script exited 0 against the isolated <span class="mono">:3321</span> test container. All checks passed. Output ended with "Energy Cockpit V2 verification OK". Production <span class="mono">:3200</span> was not rebuilt or restarted.</td>
             </tr>
             <tr>
-              <td><strong>Task 12</strong><br><span class="pill warn">next</span><br>Staging / Docker verify</td>
-              <td>Rebuild Docker container with V2 files and verify the real served page. Confirms that <span class="mono">curl /index-v2.html</span> (currently 404) is resolved post-rebuild.</td>
+              <td><strong>Task 12</strong><br><span class="pill ok">DONE</span><br>Staging / Docker verify</td>
+              <td>Rebuilt an isolated Docker image/container with V2 files and verified the real served page from <span class="mono">127.0.0.1:3322</span>. Production and staging containers were not touched.</td>
               <td>No file changes — operational only</td>
-              <td><div class="code" style="margin:0;padding:8px 10px">docker compose --profile stack up -d --build echarts-dashboard
-bash scripts/verify-energy-cockpit-v2.sh
-curl -fsS http://localhost:3200/index-v2.html | head -5</div>Browser: open localhost:3200/index-v2.html, check console, hover tooltips, confirm 15s refresh.</td>
-              <td>Container rebuilt. <span class="mono">curl /index-v2.html</span> returns 200. Browser shows cockpit layout. No JS errors. 15s timestamp updates.</td>
+              <td><div class="code" style="margin:0;padding:8px 10px">SIGEN_COCKPIT_BASE_URL=http://localhost:3322 bash scripts/verify-energy-cockpit-v2.sh
+curl -fsS http://localhost:3322/index-v2.html -o /tmp/sigen-task12-index-v2.html</div>Browser: opened localhost:3322/index-v2.html, checked console and visual layout.</td>
+              <td>Isolated rebuilt container served V2. <span class="mono">/index-v2.html</span> returned 200 / 9625 bytes. Browser showed cockpit layout with zero JS console errors.</td>
             </tr>
             <tr>
               <td><strong>Task 13</strong><br><span class="pill stop">requires approval</span><br>Root switch</td>
@@ -650,7 +674,7 @@ git push origin v1.1.0</div>Production deploy via existing release workflow (<sp
             <tr><td><strong>Stage 1</strong> — V2 Prototype Route</td><td>Add V2 entry point beside V1. Static shell served at <span class="mono">/index-v2.html</span> without touching V1 root.</td><td>Task 2</td><td><span class="pill ok">DONE</span> Files committed. 404 until container rebuild (Task 12).</td></tr>
             <tr><td><strong>Stage 2</strong> — Data Contract</td><td>Add <span class="mono">/api/cockpit</span> shaped endpoint. Wire V2 frontend to live telemetry. LIVE/OFFLINE state, null-safe rendering.</td><td>Tasks 3–4</td><td><span class="pill ok">DONE</span> <span class="mono">curl /api/cockpit</span> returns valid JSON. V2 shows real data. LIVE badge confirmed in browser.</td></tr>
             <tr><td><strong>Stage 3</strong> — Visual Revamp</td><td>Implement polished cockpit UI: hero flow canvas, intent card, KPI ribbon, side cards, 24h story, responsive breakpoints.</td><td>Tasks 5–10</td><td><span class="pill ok">DONE</span> Browser snapshots and syntax checks completed through responsive polish; no JS errors observed.</td></tr>
-            <tr><td><strong>Stage 4</strong> — Staging, Root Switch, Release</td><td>Rebuild container, browser-verify, get user approval, switch root, tag and deploy to production.</td><td>Tasks 11–14</td><td><span class="pill warn">IN PROGRESS</span> Task 11 verification script is done; next is Task 12 Docker/staging verification. Root switch still requires explicit visual approval.</td></tr>
+            <tr><td><strong>Stage 4</strong> — Staging, Root Switch, Release</td><td>Rebuild container, browser-verify, get user approval, switch root, tag and deploy to production.</td><td>Tasks 11–14</td><td><span class="pill warn">IN PROGRESS</span> Tasks 11–12 verification are done; next is Task 13 root switch only after explicit user approval.</td></tr>
           </tbody>
         </table>
 
@@ -694,7 +718,7 @@ git push origin feature/sigen-energy-cockpit-v2</div>
           </tbody>
         </table>
 
-        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 12.</strong> Rebuild the intended Docker service in the controlled verification path, run <span class="mono">bash scripts/verify-energy-cockpit-v2.sh</span> against the rebuilt service, browser-check <span class="mono">/index-v2.html</span>, and confirm there are no console errors before any root switch approval discussion.</div>
+        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 13 requires approval.</strong> Review the rendered V2 cockpit from the isolated container. If approved, preserve V1 as <span class="mono">/index-v1.html</span> and make V2 the default root; do not run this switch without explicit approval.</div>
 
         <div class="code"># Resume V2 revamp work
 git checkout feature/sigen-energy-cockpit-v2
