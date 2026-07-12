@@ -86,6 +86,7 @@
         <a href="#architecture">Architecture</a>
         <a href="#risks">Risks</a>
         <a href="#next">Next steps</a>
+        <a href="#v2-revamp">Energy Cockpit V2</a>
         <a href="#resume">Resume after model change</a>
         <a href="#commands">Useful commands</a>
       </div>
@@ -174,6 +175,62 @@
           <div class="event done"><h3>Completed — production rollback readiness</h3><p>Added the docs-only rollback readiness checklist in <a href="https://github.com/Supreamth/sig-data/pull/13">PR #13</a>. It covers checking <span class="mono">/opt/sigen-production/current</span>, managed release directories, container identity, production/staging health, and the first-release caveat that <span class="mono">v1.0.0</span> is currently the only managed rollback target. This was documentation only; it did not deploy or restart anything.</p></div>
           <div class="event next"><h3>Gate 4 dry-run complete — next real production approval</h3><p>The small non-functional <span class="mono">v1.0.1 candidate</span> dashboard marker is live on staging. Annotated tag <a href="https://github.com/Supreamth/sig-data/tree/v1.0.1"><span class="mono">v1.0.1</span></a> was created from green <span class="mono">main</span> commit <span class="mono">0aecf17</span> and verified locally/remotely; the peeled tag target is <span class="mono">0aecf17a5af594d29515efe29b4f52d2f5df2e47</span>. Production deploy dry-run succeeded in run <a href="https://github.com/Supreamth/sig-data/actions/runs/29178241782">29178241782</a>: guard passed for tag <span class="mono">v1.0.1</span>, checkout ref was <span class="mono">refs/tags/v1.0.1</span>, runner was <span class="mono">sigen-production-srv1698440</span>, <span class="mono">DRY_RUN=true</span>, planned release dir <span class="mono">/opt/sigen-production/releases/v1.0.1</span>, planned health check <span class="mono">http://127.0.0.1:3200/api/health</span>, planned current symlink repoint, and <span class="mono">DRY-RUN complete</span>. No real production deploy or rollback occurred: production health and staging health stayed HTTP 200, production container/start time stayed unchanged, and <span class="mono">/opt/sigen-production/current</span> still points to <span class="mono">/opt/sigen-production/releases/v1.0.0</span>. Next gate: only after explicit approval, run real production deploy with <span class="mono">dry_run=false</span>; rollback dry-run to <span class="mono">v1.0.0</span> comes only after <span class="mono">v1.0.1</span> is live.</p></div>
         </div>
+      </section>
+
+      <section id="v2-revamp">
+        <h2>Energy Cockpit V2 — Revamp Planning &amp; Baseline</h2>
+        <div class="callout ok"><strong>Status: branch created, baseline captured.</strong> Feature branch <span class="mono">feature/sigen-energy-cockpit-v2</span> branched from <span class="mono">main</span> on 2026-07-12. V1 production root is unchanged. Implementation proceeds incrementally via separate V2 files.</div>
+        <div class="grid-4">
+          <div class="card ok"><p class="eyebrow">Branch</p><div class="metric" style="font-size:18px">feature/</div><p class="sub">sigen-energy-cockpit-v2</p></div>
+          <div class="card ok"><p class="eyebrow">Service</p><div class="metric">OK</div><p class="sub">localhost:3200 live</p></div>
+          <div class="card ok"><p class="eyebrow">Syntax</p><div class="metric">OK</div><p class="sub">server.js + app.js</p></div>
+          <div class="card ok"><p class="eyebrow">Compose</p><div class="metric">OK</div><p class="sub">stack config valid</p></div>
+        </div>
+
+        <h3 style="margin-top:24px">Telemetry at Baseline (2026-07-12T03:41Z)</h3>
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>PV Power</td><td>9.0 kW aggregate / 10.05 kW string sum</td><td>4 strings live: PV1 3.82 kW, PV2 1.53 kW, PV3 2.02 kW, PV4 2.68 kW</td></tr>
+            <tr><td>Home Load</td><td>8.3 kW</td><td></td></tr>
+            <tr><td>Grid Flow</td><td>0 kW (idle)</td><td>grid_idle_hours today: 3.69 h</td></tr>
+            <tr><td>Battery</td><td>SOC 75.8%, +0.7 kW charging</td><td>2 modules, 18.08 kWh total capacity</td></tr>
+            <tr><td>Grid Cost Today</td><td>33.35 THB (7.90 kWh imported)</td><td>rate 4.22 THB/kWh</td></tr>
+            <tr><td>PV Energy Today</td><td>24.36 kWh</td><td></td></tr>
+            <tr><td>DC Charger (last session)</td><td>0.67 kWh / 2.83 THB</td><td>ended 2026-07-11T08:47Z</td></tr>
+            <tr><td>Weather</td><td>30.1°C, drizzle (code 51), wind 12.7 km/h SW</td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:20px">V2 Revamp — Task Plan</h3>
+        <div class="timeline">
+          <div class="event done"><h3>Task 1 — Branch &amp; Baseline</h3><p>Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span>. Baseline snapshot in <span class="mono">docs/sigen-energy-cockpit-v2-baseline.md</span>. API probes confirm service live, PV strings &amp; battery modules available, DC charger data available. Syntax and compose checks pass. V1 root untouched.</p></div>
+          <div class="event next"><h3>Task 2 — V2 Prototype Route</h3><p>Add <span class="mono">index-v2.html</span>, <span class="mono">app-v2.js</span>, <span class="mono">styles-v2.css</span> alongside V1 files. Shell renders at <span class="mono">http://localhost:3200/index-v2.html</span>. V1 root unchanged.</p></div>
+          <div class="event"><h3>Task 3 — /api/cockpit Endpoint</h3><p>Add compact cockpit-shaped endpoint to <span class="mono">server.js</span>. Returns status, latest, intent, flows, battery, dc_charger, tesla, data_quality.</p></div>
+          <div class="event"><h3>Task 4 — Wire V2 to Live Telemetry</h3><p>Connect <span class="mono">app-v2.js</span> to <span class="mono">/api/cockpit</span>. 15s refresh, OFFLINE state, null-safe rendering.</p></div>
+          <div class="event"><h3>Tasks 5–10 — Visual Revamp</h3><p>Hero flow canvas, Energy Intent card, KPI ribbon, side cards, Weather VS Actual PV, 24h Energy Story, responsive/accessibility polish.</p></div>
+          <div class="event"><h3>Tasks 11–12 — Verification Script &amp; Staging</h3><p>Repeatable verify script; local production-like Docker verification; browser screenshots.</p></div>
+          <div class="event"><h3>Task 13 — Root Switch (Requires Approval)</h3><p>Switch root route to V2 only after user approves rendered UI. V1 preserved as <span class="mono">/index-v1.html</span>.</p></div>
+          <div class="event"><h3>Task 14 — Production Release</h3><p>Tag, deploy, release notes. Target tag: <span class="mono">v1.1.0</span> or <span class="mono">v2.0.0</span> per user preference.</p></div>
+        </div>
+
+        <h3 style="margin-top:20px">Design Goals</h3>
+        <table>
+          <thead><tr><th>Principle</th><th>Current V1 Gap</th><th>V2 Target</th></tr></thead>
+          <tbody>
+            <tr><td>Hero First</td><td>Power flow is one panel among many</td><td>Full-width animated power flow canvas is the centerpiece</td></tr>
+            <tr><td>Realtime Trust</td><td>No explicit LIVE/OFFLINE or freshness indicator</td><td>LIVE badge, updated timestamp, auto-refresh 15s</td></tr>
+            <tr><td>Energy Intent</td><td>No plain-language system state card</td><td>Intent card: "Using solar for home load", "Charging battery from excess PV", etc.</td></tr>
+            <tr><td>Fewer Stronger Cards</td><td>Dense equal-weight panels</td><td>Bento KPI ribbon + main hero + 2-card analysis row</td></tr>
+            <tr><td>Honest Telemetry</td><td>PV strings, battery modules, EV must stay real</td><td>Null shown as "No data" — never fake zero</td></tr>
+            <tr><td>Tablet Readable</td><td>May be tight at 760–860px</td><td>Explicit breakpoints at 1200/1000/760/560px</td></tr>
+          </tbody>
+        </table>
+
+        <div class="code"># Resume V2 revamp work
+git checkout feature/sigen-energy-cockpit-v2
+cat docs/sigen-energy-cockpit-v2-baseline.md
+cat .hermes/plans/2026-07-12_033852-sigen-realtime-energy-flow-v2-revamp.md</div>
       </section>
 
       <section id="resume">
