@@ -278,14 +278,29 @@ Cloudflare -> reverse proxy -> 127.0.0.1:3200 -> container echarts-dashboard
 7. Post-deploy checks confirmed production public health HTTP 200, staging public
    health HTTP 200, and the staging container unchanged.
 
-## Next planned lifecycle test
+## V1.0.1 lifecycle status
 
-The next safe release exercise is documented in
-[`docs/v1.0.1-lifecycle-test-plan.md`](v1.0.1-lifecycle-test-plan.md). It is a
-gate-by-gate plan for a tiny `v1.0.1` change: PR + CI, staging dry-run and real
-staging deploy, tag `v1.0.1` from green `main`, production deploy dry-run, real
-production deploy only after explicit approval, and rollback dry-run to
-`/opt/sigen-production/releases/v1.0.0` once a second managed release exists.
+The v1.0.1 second-release lifecycle test is in progress and documented in
+[`docs/v1.0.1-lifecycle-test-plan.md`](v1.0.1-lifecycle-test-plan.md).
 
-Do not perform a real production deploy or rollback as part of planning. Each
-runtime gate requires its own evidence and explicit approval.
+Completed gates:
+
+1. Gate 1 PR + CI: a tiny non-functional `v1.0.1 candidate` dashboard topbar
+   marker was merged in PR #17.
+2. Gate 2 staging-first validation: staging dry-run succeeded in run
+   `29177098120`; real staging deploy succeeded in run `29177451424`.
+3. Gate 3 tag: annotated tag `v1.0.1` was created from green `main` commit
+   `0aecf17a5af594d29515efe29b4f52d2f5df2e47`.
+4. Gate 4 production deploy dry-run: run `29178241782` succeeded with
+   `dry_run=true`, checked out `refs/tags/v1.0.1`, ran on
+   `sigen-production-srv1698440`, planned `/opt/sigen-production/releases/v1.0.1`,
+   and completed without runtime mutation.
+
+Current production state after the dry-run: `/opt/sigen-production/current` still
+points to `/opt/sigen-production/releases/v1.0.0`, only `v1.0.0` exists under the
+production managed release root, and production/staging public health remained
+HTTP 200.
+
+Next gate: real production deploy for `v1.0.1` with `dry_run=false`, only after
+explicit approval. Rollback dry-run to `/opt/sigen-production/releases/v1.0.0`
+comes only after `v1.0.1` is live and a second managed production release exists.
