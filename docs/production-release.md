@@ -304,3 +304,42 @@ HTTP 200.
 Next gate: real production deploy for `v1.0.1` with `dry_run=false`, only after
 explicit approval. Rollback dry-run to `/opt/sigen-production/releases/v1.0.0`
 comes only after `v1.0.1` is live and a second managed production release exists.
+
+## Energy Cockpit V2 pre-release verification
+
+The Energy Cockpit V2 revamp branch includes a read-only verification helper:
+
+```bash
+bash scripts/verify-energy-cockpit-v2.sh
+```
+
+By default it targets `http://localhost:3200`. To verify an isolated rebuilt test
+container without touching production, override the base URL:
+
+```bash
+SIGEN_COCKPIT_BASE_URL=http://localhost:3321 \
+  bash scripts/verify-energy-cockpit-v2.sh
+```
+
+The script performs only read-only checks. It does not rebuild, restart, stop, or
+replace containers, and it does not switch the V1 root. It verifies:
+
+- `node --check` for `echarts-dashboard/server.js`, `public/app.js`, and
+  `public/app-v2.js`.
+- `docker compose --profile stack config` renders a non-empty config.
+- `/api/health`, `/api/cockpit`, `/api/weather-vs-actual`, and
+  `/api/history?range=24h` respond with valid JSON.
+- `/api/cockpit` reports `status: "ok"`.
+- `/index-v2.html` is served and contains `Energy Cockpit`.
+
+The successful final line is:
+
+```text
+Energy Cockpit V2 verification OK
+```
+
+Task 11 was proven against the isolated `http://localhost:3321` V2 test
+container. Production `http://localhost:3200` was not rebuilt or restarted.
+Before any root switch or production release, run this script against the actual
+rebuilt staging/production-like service and browser-check `/index-v2.html` for
+layout and console errors.
