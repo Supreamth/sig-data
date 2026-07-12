@@ -179,7 +179,7 @@
 
       <section id="v2-revamp">
         <h2>Energy Cockpit V2 — Full Plan &amp; Execution Tracker</h2>
-        <div class="callout ok"><strong>Status: Tasks 1–7 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons, and KPI ribbon/side cards populated from real cockpit telemetry. V1 root is unchanged. Next: Task 8 — Weather VS Actual PV.</div>
+        <div class="callout ok"><strong>Status: Tasks 1–8 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons, and KPI ribbon/side cards populated from real cockpit telemetry, and Weather VS Actual PV chart rendered with real PV string telemetry plus GHI/cloud context. V1 root is unchanged. Next: Task 9 — 24h Energy Story.</div>
 
         <div class="grid-4">
           <div class="card ok"><p class="eyebrow">Branch</p><div class="metric" style="font-size:16px">feature/</div><p class="sub">sigen-energy-cockpit-v2</p></div>
@@ -210,6 +210,7 @@
             <tr><td><span class="mono">fdfaf0b</span></td><td>feat: add cockpit hero power flow</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
             <tr><td><span class="mono">7bd5373</span></td><td>feat: refine energy intent card</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
             <tr><td><span class="mono">4e3cc30</span></td><td>feat: refine cockpit kpis and side cards</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span></td></tr>
+            <tr><td><span class="mono">d84c177</span></td><td>feat: add weather actual pv chart</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
           </tbody>
         </table>
 
@@ -425,6 +426,34 @@ curl -fsS http://localhost:3321/api/cockpit | python3 -m json.tool
           </div>
         </details>
 
+        <details open>
+          <summary>Task 8 — Weather VS Actual PV (DONE · commit d84c177)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Replace the Weather VS Actual PV placeholder with a real ECharts diagnostic chart. Use real PV1–PV4 string telemetry when available, aggregate PV fallback only when string telemetry is missing, and weather context from GHI/shortwave radiation plus cloud cover.</p>
+            <div class="code">node --check echarts-dashboard/server.js          # → OK
+node --check echarts-dashboard/public/app-v2.js  # → OK
+docker compose -p sig-data -f docker-compose.yml -f /tmp/echarts-v2-override.yml --profile stack up -d --no-deps --build echarts-dashboard
+curl -fsS http://localhost:3321/api/weather-vs-actual | python3 -m json.tool
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">/api/weather-vs-actual</span></td><td><span class="pill ok">PASS</span></td><td>Returned <span class="mono">timezone</span>, <span class="mono">local_date</span>, <span class="mono">source</span>, and hourly rows with PV/string/weather fields.</td></tr>
+                <tr><td>PV source</td><td><span class="pill ok">REAL STRINGS</span></td><td>Browser note showed real PV1–PV4 string telemetry; chart stacked PV1, PV2, PV3, PV4 kW bars.</td></tr>
+                <tr><td>Weather context</td><td><span class="pill ok">VISIBLE</span></td><td>GHI line and cloud cover area/axis visible on the chart.</td></tr>
+                <tr><td>Tooltip safety</td><td><span class="pill ok">IMPLEMENTED</span></td><td>ECharts tooltip uses <span class="mono">appendToBody</span> and body-level z-index to avoid clipping.</td></tr>
+                <tr><td>Null handling</td><td><span class="pill ok">PASS</span></td><td>Missing values are kept as <span class="mono">null</span>; no fake PV1–PV4 values are created.</td></tr>
+                <tr><td>Browser rendering</td><td><span class="pill ok">PASS</span></td><td>Placeholder replaced by canvas chart; PV1–PV4 bars, GHI, cloud cover visible and readable.</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">d84c177</span></td><td>feat: add weather actual pv chart</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
         <h3 style="margin-top:24px">Roadmap — Remaining Tasks</h3>
         <table>
           <thead><tr><th>Task</th><th>Objective</th><th>Key Files</th><th>Verification</th><th>Acceptance</th></tr></thead>
@@ -467,14 +496,14 @@ curl -fsS http://localhost:3200/api/cockpit \
               <td>8 KPI slots visible at desktop. Side cards show correct units. Missing data remains null-safe; measured 0 remains 0.</td>
             </tr>
             <tr>
-              <td><strong>Task 8</strong><br><span class="pill warn">next</span><br>Weather VS Actual PV</td>
+              <td><strong>Task 8</strong><br><span class="pill ok">DONE</span><br><span class="mono">d84c177</span><br>Weather VS Actual PV</td>
               <td>Rebuild the PV/weather diagnostic chart. PV1–PV4 stacked bars from real string telemetry; aggregate fallback only if strings unavailable and clearly labelled. GHI/shortwave radiation as line. Tooltip appended to body to prevent clipping.</td>
-              <td><span class="mono">app-v2.js</span>, <span class="mono">styles-v2.css</span></td>
-              <td>Tooltip not clipped at panel edge. Future/missing PV is null not zero. Legend readable.</td>
-              <td>Stacked bars use real PV string data. GHI line present. Sunrise/sunset markers stable. No tooltip clipping.</td>
+              <td><span class="mono">index-v2.html</span>, <span class="mono">app-v2.js</span>, <span class="mono">styles-v2.css</span></td>
+              <td><span class="pill ok">PASS</span> Browser snapshot confirmed chart canvas with PV1–PV4 bars, GHI line, cloud cover, and zero console errors.</td>
+              <td>Stacked bars use real PV string data. Aggregate fallback is labelled when needed. Tooltip is body-appended. Null remains null.</td>
             </tr>
             <tr>
-              <td><strong>Task 9</strong><br><span class="pill">pending</span><br>24h Energy Story</td>
+              <td><strong>Task 9</strong><br><span class="pill warn">next</span><br>24h Energy Story</td>
               <td>Fixed 24h history chart (not range-linked). Series: PV power, home load, grid import/export, battery charge/discharge, EV power if present. Fetch <span class="mono">/api/history?range=24h</span>.</td>
               <td><span class="mono">app-v2.js</span>, <span class="mono">index-v2.html</span></td>
               <td>Chart always shows 24h window. kW lines not mixed with kWh unless clearly labelled.</td>
@@ -577,7 +606,7 @@ git push origin feature/sigen-energy-cockpit-v2</div>
           </tbody>
         </table>
 
-        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 8.</strong> Build the Weather VS Actual PV diagnostic chart using real PV1–PV4 string telemetry where available, clear aggregate fallback only when strings are unavailable, and GHI/cloud/weather context. Verify tooltips, null handling, and zero console errors.</div>
+        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 9.</strong> Build the fixed 24h Energy Story chart using <span class="mono">/api/history?range=24h</span>: PV, load, grid import/export, battery charge/discharge, and EV power if present. Keep units correct and missing EV data absent/null-safe.</div>
 
         <div class="code"># Resume V2 revamp work
 git checkout feature/sigen-energy-cockpit-v2
