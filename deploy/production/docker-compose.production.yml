@@ -41,6 +41,9 @@ services:
       DASHBOARD_AUTH_ENABLED: ${DASHBOARD_AUTH_ENABLED:-false}
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+      DASHBOARD_ENVIRONMENT: "production"
+      DASHBOARD_RELEASE_VERSION: "v1.0.2"
+      DASHBOARD_RELEASE_LABEL: "v1.0.2"
     ports:
       # Loopback-only publish; reverse proxy fronts this on production.
       - "127.0.0.1:3200:3200"

@@ -42,6 +42,9 @@ services:
       # duplicate/noisy messages while validating a release.
       TELEGRAM_REPORT_ENABLED: "false"
       TELEGRAM_ALERTS_ENABLED: "false"
+      DASHBOARD_ENVIRONMENT: "staging"
+      DASHBOARD_RELEASE_VERSION: "v1.0.1"
+      DASHBOARD_RELEASE_LABEL: "v1.0.1 candidate"
     ports:
       # Loopback-only publish; reverse proxy fronts this on staging.
       - "127.0.0.1:3400:3200"
