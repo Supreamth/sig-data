@@ -585,12 +585,21 @@ body {
   opacity: .75;
 }
 
-/* keep topology nodes from inheriting old absolute-flow sizing */
-.topology .node-home { min-width: 0; min-height: 82px; border-color: rgba(88,166,255,.30); }
+/* keep topology nodes from inheriting old absolute-flow positioning/sizing */
+.topology .node-home,
 .topology .node-grid,
 .topology .node-battery,
 .topology .node-dc,
-.topology .node-tesla { left: auto; top: auto; }
+.topology .node-tesla {
+  left: auto;
+  top: auto;
+}
+
+.topology .node-home {
+  min-width: 0;
+  min-height: 82px;
+  border-color: rgba(88,166,255,.30);
+}
 
 /* ── Side Stack ───────────────────────────────────────── */
 .side-stack {
