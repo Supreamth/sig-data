@@ -86,6 +86,7 @@
         <a href="#architecture">Architecture</a>
         <a href="#risks">Risks</a>
         <a href="#next">Next steps</a>
+        <a href="#v2-revamp">Energy Cockpit V2</a>
         <a href="#resume">Resume after model change</a>
         <a href="#commands">Useful commands</a>
       </div>
@@ -174,6 +175,558 @@
           <div class="event done"><h3>Completed — production rollback readiness</h3><p>Added the docs-only rollback readiness checklist in <a href="https://github.com/Supreamth/sig-data/pull/13">PR #13</a>. It covers checking <span class="mono">/opt/sigen-production/current</span>, managed release directories, container identity, production/staging health, and the first-release caveat that <span class="mono">v1.0.0</span> is currently the only managed rollback target. This was documentation only; it did not deploy or restart anything.</p></div>
           <div class="event next"><h3>Gate 4 dry-run complete — next real production approval</h3><p>The small non-functional <span class="mono">v1.0.1 candidate</span> dashboard marker is live on staging. Annotated tag <a href="https://github.com/Supreamth/sig-data/tree/v1.0.1"><span class="mono">v1.0.1</span></a> was created from green <span class="mono">main</span> commit <span class="mono">0aecf17</span> and verified locally/remotely; the peeled tag target is <span class="mono">0aecf17a5af594d29515efe29b4f52d2f5df2e47</span>. Production deploy dry-run succeeded in run <a href="https://github.com/Supreamth/sig-data/actions/runs/29178241782">29178241782</a>: guard passed for tag <span class="mono">v1.0.1</span>, checkout ref was <span class="mono">refs/tags/v1.0.1</span>, runner was <span class="mono">sigen-production-srv1698440</span>, <span class="mono">DRY_RUN=true</span>, planned release dir <span class="mono">/opt/sigen-production/releases/v1.0.1</span>, planned health check <span class="mono">http://127.0.0.1:3200/api/health</span>, planned current symlink repoint, and <span class="mono">DRY-RUN complete</span>. No real production deploy or rollback occurred: production health and staging health stayed HTTP 200, production container/start time stayed unchanged, and <span class="mono">/opt/sigen-production/current</span> still points to <span class="mono">/opt/sigen-production/releases/v1.0.0</span>. Next gate: only after explicit approval, run real production deploy with <span class="mono">dry_run=false</span>; rollback dry-run to <span class="mono">v1.0.0</span> comes only after <span class="mono">v1.0.1</span> is live.</p></div>
         </div>
+      </section>
+
+      <section id="v2-revamp">
+        <h2>Energy Cockpit V2 — Full Plan &amp; Execution Tracker</h2>
+        <div class="callout ok"><strong>Status: Tasks 1–12 complete.</strong> Branch <span class="mono">feature/sigen-energy-cockpit-v2</span> created from <span class="mono">main</span> on 2026-07-12. Prototype shell committed, <span class="mono">/api/cockpit</span> endpoint live, V2 frontend wired to live telemetry, hero power flow canvas built, and Energy Intent card refined with evidence-backed reasons, and KPI ribbon/side cards populated from real cockpit telemetry, and Weather VS Actual PV chart rendered with real PV string telemetry plus GHI/cloud context, and 24h Energy Story chart rendered from real history telemetry, and responsive layout polish added for desktop/tablet/phone breakpoints, and a repeatable <span class="mono">scripts/verify-energy-cockpit-v2.sh</span> verification script added. Docker verification passed against isolated rebuilt container <span class="mono">echarts-dashboard-v2-task12</span> on <span class="mono">127.0.0.1:3322</span>; browser snapshot showed the cockpit with no console errors. Production <span class="mono">:3200</span> and staging <span class="mono">:3400</span> remained healthy and unchanged. V1 root is unchanged. Next: Task 13 root switch, but only after explicit user approval of the rendered V2.</div>
+
+        <div class="grid-4">
+          <div class="card ok"><p class="eyebrow">Branch</p><div class="metric" style="font-size:16px">feature/</div><p class="sub">sigen-energy-cockpit-v2</p></div>
+          <div class="card ok"><p class="eyebrow">Service</p><div class="metric">OK</div><p class="sub">localhost:3200 live</p></div>
+          <div class="card ok"><p class="eyebrow">Syntax</p><div class="metric">OK</div><p class="sub">server.js + app-v2.js</p></div>
+          <div class="card ok"><p class="eyebrow">Compose</p><div class="metric">OK</div><p class="sub">stack config valid</p></div>
+        </div>
+
+        <h3 style="margin-top:24px">Key Documents</h3>
+        <table>
+          <thead><tr><th>Document</th><th>Path</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Implementation Plan</td><td><span class="mono">.hermes/plans/2026-07-12_033852-sigen-realtime-energy-flow-v2-revamp.md</span></td><td>Full 14-task plan, design principles, launch stages, risks, definition of done.</td></tr>
+            <tr><td>Baseline Snapshot</td><td><span class="mono">docs/sigen-energy-cockpit-v2-baseline.md</span></td><td>Git state, syntax checks, live API probe outputs, PV strings, battery modules, DC charger data, all captured at 2026-07-12T03:41Z.</td></tr>
+            <tr><td>CI/CD Tracker (this file)</td><td><span class="mono">docs/ci-cd-tracker.html</span></td><td>Execution log, roadmap, and next steps. Live at <a href="https://cicd.sprees.net/ci-cd-tracker.html">cicd.sprees.net/ci-cd-tracker.html</a>.</td></tr>
+            <tr><td>Production Release Docs</td><td><span class="mono">docs/production-release.md</span></td><td>Production release checklist and rollback procedures for v1.0.x series.</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:20px">Branch Commits</h3>
+        <table>
+          <thead><tr><th>SHA</th><th>Message</th><th>Files changed</th></tr></thead>
+          <tbody>
+            <tr><td><span class="mono">ff9423a</span></td><td>docs: baseline energy cockpit v2 revamp</td><td><span class="mono">docs/ci-cd-tracker.html</span>, <span class="mono">docs/sigen-energy-cockpit-v2-baseline.md</span></td></tr>
+            <tr><td><span class="mono">8030b8d</span></td><td>feat: add energy cockpit v2 prototype shell</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span> (241 lines), <span class="mono">echarts-dashboard/public/styles-v2.css</span> (653 lines), <span class="mono">echarts-dashboard/public/app-v2.js</span> (131 lines)</td></tr>
+            <tr><td><span class="mono">a8efc6d</span></td><td>feat: add cockpit telemetry endpoint</td><td><span class="mono">echarts-dashboard/server.js</span></td></tr>
+            <tr><td><span class="mono">d679a08</span></td><td>feat: wire cockpit v2 to live telemetry</td><td><span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
+            <tr><td><span class="mono">fdfaf0b</span></td><td>feat: add cockpit hero power flow</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
+            <tr><td><span class="mono">7bd5373</span></td><td>feat: refine energy intent card</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
+            <tr><td><span class="mono">4e3cc30</span></td><td>feat: refine cockpit kpis and side cards</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span></td></tr>
+            <tr><td><span class="mono">d84c177</span></td><td>feat: add weather actual pv chart</td><td><span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span>, <span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
+            <tr><td><span class="mono">df5eaa9</span></td><td>feat: add 24h energy story chart</td><td><span class="mono">echarts-dashboard/server.js</span>, <span class="mono">echarts-dashboard/public/index-v2.html</span>, <span class="mono">echarts-dashboard/public/app-v2.js</span></td></tr>
+            <tr><td><span class="mono">9d34797</span></td><td>feat: polish cockpit responsive layout</td><td><span class="mono">echarts-dashboard/public/styles-v2.css</span></td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:20px">Telemetry at Baseline (2026-07-12T03:41Z)</h3>
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>PV Power</td><td>9.0 kW aggregate / 10.05 kW string sum</td><td>4 strings live: PV1 3.82 kW, PV2 1.53 kW, PV3 2.02 kW, PV4 2.68 kW</td></tr>
+            <tr><td>Home Load</td><td>8.3 kW</td><td></td></tr>
+            <tr><td>Grid Flow</td><td>0 kW (idle)</td><td>grid_idle_hours today: 3.69 h</td></tr>
+            <tr><td>Battery</td><td>SOC 75.8%, +0.7 kW charging</td><td>2 modules, 18.08 kWh total capacity</td></tr>
+            <tr><td>Grid Cost Today</td><td>33.35 THB (7.90 kWh imported)</td><td>rate 4.22 THB/kWh</td></tr>
+            <tr><td>PV Energy Today</td><td>24.36 kWh</td><td></td></tr>
+            <tr><td>DC Charger (last session)</td><td>0.67 kWh / 2.83 THB</td><td>ended 2026-07-11T08:47Z</td></tr>
+            <tr><td>Weather</td><td>30.1°C, drizzle (code 51), wind 12.7 km/h SW</td><td></td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:24px">Execution Log — Completed Tasks</h3>
+
+        <details open>
+          <summary>Task 1 — Branch &amp; Baseline (DONE · commit ff9423a)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Protect production by starting from a clean branch and capturing current service state before any UI changes.</p>
+            <div class="code">cd /root/projects/sig-data
+git checkout -b feature/sigen-energy-cockpit-v2
+node --check echarts-dashboard/server.js          # → OK
+node --check echarts-dashboard/public/app.js      # → OK
+docker compose --profile stack config >/tmp/sig-compose-config.out   # → OK (no validation errors)
+curl -fsS http://localhost:3200/api/health | python3 -m json.tool     # → {"status":"ok","station_id":"72026051000002",...}
+curl -fsS http://localhost:3200/api/latest | python3 -m json.tool     # → live telemetry snapshot
+curl -fsS 'http://localhost:3200/api/history?range=24h' >/tmp/sigen-history-24h.json
+git add docs/sigen-energy-cockpit-v2-baseline.md docs/ci-cd-tracker.html
+git commit -m "docs: baseline energy cockpit v2 revamp"</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">node --check app.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">docker compose config</span></td><td><span class="pill ok">PASS</span></td><td>Stack config valid</td></tr>
+                <tr><td><span class="mono">/api/health</span></td><td><span class="pill ok">PASS</span></td><td>status ok, station_id 72026051000002</td></tr>
+                <tr><td><span class="mono">/api/latest</span></td><td><span class="pill ok">PASS</span></td><td>PV strings &amp; battery modules present</td></tr>
+                <tr><td><span class="mono">/api/dc-charger-cost</span></td><td><span class="pill ok">PASS</span></td><td>DC charger data available</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">ff9423a</span></td><td>docs: baseline energy cockpit v2 revamp</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 2 — V2 Prototype Shell (DONE · commit 8030b8d)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Create a safe V2 prototype page served at <span class="mono">/index-v2.html</span> without replacing or touching V1 root.</p>
+            <div class="code">git add echarts-dashboard/public/index-v2.html echarts-dashboard/public/styles-v2.css echarts-dashboard/public/app-v2.js
+node --check echarts-dashboard/public/app-v2.js   # → OK
+git commit -m "feat: add energy cockpit v2 prototype shell"</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>131-line prototype shell, no syntax errors</td></tr>
+                <tr><td><span class="mono">index-v2.html</span> added</td><td><span class="pill ok">241 lines</span></td><td>Semantic sections: .command-bar, .kpi-ribbon, .hero-grid, .flow-card, .side-stack, .analysis-grid</td></tr>
+                <tr><td><span class="mono">styles-v2.css</span> added</td><td><span class="pill ok">653 lines</span></td><td>CSS custom properties, breakpoints, glass card styles</td></tr>
+                <tr><td><span class="mono">app-v2.js</span> added</td><td><span class="pill ok">131 lines</span></td><td>Prototype shell — API wiring deferred to Task 4</td></tr>
+                <tr><td><span class="mono">curl /index-v2.html</span></td><td><span class="pill warn">404 until rebuild</span></td><td>Static files are baked into the Docker image at build time. <strong>curl http://localhost:3200/index-v2.html returns 404 until the container is rebuilt with <span class="mono">docker compose up -d --build echarts-dashboard</span>.</strong> Files exist in the repo; this is expected pre-rebuild behaviour.</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">8030b8d</span></td><td>feat: add energy cockpit v2 prototype shell</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 3 — Add /api/cockpit endpoint (DONE · commit a8efc6d)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Add a compact, cockpit-shaped backend endpoint to <span class="mono">server.js</span> that returns <span class="mono">status, latest, intent, flows, battery, dc_charger, tesla, data_quality</span>. Derive intent and flows from signed telemetry fields. Preserve all existing endpoints.</p>
+            <div class="code">node --check echarts-dashboard/server.js          # → OK
+docker compose config                             # → valid (no errors)
+# Temp compose container for isolated verification
+docker compose -f docker-compose.test.yml up -d echarts-dashboard-v2-test-compose
+# Container served on localhost:3321
+curl -fsS http://localhost:3321/api/cockpit | python3 -m json.tool</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">docker compose config</span></td><td><span class="pill ok">PASS</span></td><td>Stack config valid</td></tr>
+                <tr><td>Temp container</td><td><span class="pill ok">localhost:3321</span></td><td><span class="mono">echarts-dashboard-v2-test-compose</span> served for isolated verification</td></tr>
+                <tr><td><span class="mono">/api/cockpit status</span></td><td><span class="pill ok">ok</span></td><td>Response: <span class="mono">{"status":"ok",...}</span></td></tr>
+                <tr><td><span class="mono">pv_power</span></td><td><span class="pill ok">9.40–11.90 kW</span></td><td>Live range observed during verification</td></tr>
+                <tr><td><span class="mono">load_power</span></td><td><span class="pill ok">5.40 / 4.80 kW</span></td><td>Observed values across polling windows</td></tr>
+                <tr><td>Grid</td><td><span class="pill ok">idle</span></td><td>Grid flow at 0, idle state confirmed</td></tr>
+                <tr><td>Battery</td><td><span class="pill ok">charging</span></td><td>Battery charging from excess PV</td></tr>
+                <tr><td>Tesla VIN</td><td><span class="pill ok">no VIN</span></td><td>No Tesla VIN present — dc_charger/tesla fields null-safe</td></tr>
+                <tr><td><span class="mono">data_quality.stale</span></td><td><span class="pill ok">false</span></td><td>Telemetry fresh during verification</td></tr>
+                <tr><td>Existing endpoints</td><td><span class="pill ok">PASS</span></td><td>All prior endpoints unaffected</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">a8efc6d</span></td><td>feat: add cockpit telemetry endpoint</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 4 — Wire V2 Frontend to Live Telemetry (DONE · commit d679a08)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Connect <span class="mono">app-v2.js</span> to <span class="mono">/api/cockpit</span>. 15-second recursive <span class="mono">setTimeout</span> refresh. OFFLINE state on error. Null shown as "No telemetry", never coerced to 0.</p>
+            <div class="code">node --check echarts-dashboard/public/app-v2.js    # → OK
+# Verify V2 HTML served
+curl -fsS http://localhost:3321/index-v2.html | wc -c   # → 8196 bytes
+# Browser snapshot (localhost:3321/index-v2.html)</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">curl /index-v2.html</span></td><td><span class="pill ok">8196 bytes</span></td><td>Served correctly from test container</td></tr>
+                <tr><td>LIVE badge</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed LIVE badge displayed</td></tr>
+                <tr><td>KPI values</td><td><span class="pill ok">RENDER</span></td><td>KPI ribbon showing live PV, load, grid, battery values</td></tr>
+                <tr><td>Power Flow chips</td><td><span class="pill ok">PRESENT</span></td><td>Flow direction chips visible in browser snapshot</td></tr>
+                <tr><td>Battery card</td><td><span class="pill ok">PRESENT</span></td><td>Battery SOC and charge/discharge state rendered</td></tr>
+                <tr><td>DC Charger / Tesla</td><td><span class="pill ok">PRESENT</span></td><td>DC charger card shown; Tesla shown with no VIN (null-safe)</td></tr>
+                <tr><td>Data Health</td><td><span class="pill ok">PRESENT</span></td><td>Data quality / staleness indicator rendered</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>No errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">d679a08</span></td><td>feat: wire cockpit v2 to live telemetry</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 5 — Hero Power Flow Canvas (DONE · commit fdfaf0b)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Build the animated power flow canvas centerpiece. Nodes: PV Array, Grid, Home/Load Bus, Battery, DC Charger, Tesla (contextual). Animated flows only when telemetry active. Inactive flows shown as dim guides. No Battery→DC Charger path; EV path is Load Bus→DC Charger→Tesla.</p>
+            <div class="code">node --check echarts-dashboard/public/app-v2.js    # → OK
+# Rebuilt temp compose container on localhost:3321
+curl -fsS http://localhost:3321/index-v2.html | wc -c   # → 9725 bytes
+wc -c echarts-dashboard/public/app-v2.js               # → 14423 bytes
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td>Temp compose container</td><td><span class="pill ok">localhost:3321</span></td><td>Rebuilt for isolated verification</td></tr>
+                <tr><td><span class="mono">index-v2.html</span> size</td><td><span class="pill ok">9725 bytes</span></td><td>Hero canvas markup added</td></tr>
+                <tr><td><span class="mono">app-v2.js</span> size</td><td><span class="pill ok">14423 bytes</span></td><td>Power flow logic added</td></tr>
+                <tr><td>PV Array node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>Grid node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>Home Load Bus node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>Battery node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>DC Charger node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>Tesla node</td><td><span class="pill ok">VISIBLE</span></td><td>Browser snapshot confirmed</td></tr>
+                <tr><td>PV→Home flow chips</td><td><span class="pill ok">ACTIVE</span></td><td>Animated chips visible — active telemetry-derived flow</td></tr>
+                <tr><td>Home→Battery flow chips</td><td><span class="pill ok">ACTIVE</span></td><td>Animated chips visible — battery charging from excess PV</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">fdfaf0b</span></td><td>feat: add cockpit hero power flow</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 6 — Energy Intent Card Refinement (DONE · commit 7bd5373)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Refine the Energy Intent card and <span class="mono">/api/cockpit.intent</span> so the dashboard explains the current system state with deterministic, evidence-backed copy. User-requested examples included <span class="mono">Using solar for home load</span> and <span class="mono">Battery supporting evening load</span>.</p>
+            <div class="code">node --check echarts-dashboard/server.js          # → OK
+node --check echarts-dashboard/public/app-v2.js  # → OK
+docker compose -p sig-data -f docker-compose.yml -f /tmp/echarts-v2-override.yml --profile stack up -d --no-deps --build echarts-dashboard
+curl -fsS http://localhost:3321/api/cockpit | python3 -m json.tool
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td>Intent primary examples</td><td><span class="pill ok">ADDED</span></td><td><span class="mono">Using solar for home load</span>, <span class="mono">Charging battery from excess PV</span>, <span class="mono">Exporting solar surplus</span>, <span class="mono">Importing grid for home load</span>, <span class="mono">Battery supporting evening load</span></td></tr>
+                <tr><td>Evidence / reasons</td><td><span class="pill ok">VISIBLE</span></td><td>Browser showed evidence lines: PV active, Grid importing, Battery discharging, EV drawing.</td></tr>
+                <tr><td><span class="mono">/api/cockpit.intent</span></td><td><span class="pill ok">PASS</span></td><td>Returned primary <span class="mono">Using solar for home load</span>, secondary bullets, and <span class="mono">reasons[]</span> from live telemetry.</td></tr>
+                <tr><td>Browser rendering</td><td><span class="pill ok">PASS</span></td><td>Energy Intent card readable; primary, secondary bullets, and evidence lines fit without overlap.</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">7bd5373</span></td><td>feat: refine energy intent card</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 7 — KPI Ribbon &amp; Side Cards (DONE · commit 4e3cc30)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Finalize the bento KPI ribbon and side cards with real cockpit data, correct units, and null-safe display. KPI order preserved: PV Now, Home Load, Grid Flow, Grid Idle 24h, Grid Cost Today, Battery SOC, Weather, Self-use.</p>
+            <div class="code">node --check echarts-dashboard/server.js          # → OK
+node --check echarts-dashboard/public/app-v2.js  # → OK
+docker compose -p sig-data -f docker-compose.yml -f /tmp/echarts-v2-override.yml --profile stack up -d --no-deps --build echarts-dashboard
+curl -fsS http://localhost:3321/api/cockpit | python3 -m json.tool
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">/api/cockpit.kpis</span></td><td><span class="pill ok">PASS</span></td><td>Returned grid idle hours/minutes, grid cost THB, import kWh, rate, and self-use pct from real daily energy data.</td></tr>
+                <tr><td>KPI ribbon</td><td><span class="pill ok">VISIBLE</span></td><td>Browser showed all 8 tiles: PV, Home, Grid, Grid Idle 24h, Grid Cost Today, Battery SOC, Weather, Self-use.</td></tr>
+                <tr><td>Observed KPI values</td><td><span class="pill ok">LIVE</span></td><td>Example: Grid Idle 9.0h / 542 min, Grid Cost 54.91 THB, Self-use 100.0%, Weather 28°C.</td></tr>
+                <tr><td>Battery side card</td><td><span class="pill ok">PASS</span></td><td>Status badge, SOC ring, kW, stored kWh, and remaining/charging estimate readable with units.</td></tr>
+                <tr><td>DC Charger / Tesla</td><td><span class="pill ok">PASS</span></td><td>Load-bus route preserved; power/status/route rendered with no direct Battery→DC path.</td></tr>
+                <tr><td>Null safety</td><td><span class="pill ok">PASS</span></td><td>Unavailable fields render as <span class="mono">—</span>, <span class="mono">No data</span>, or <span class="mono">No telemetry</span>; measured zero remains a real 0.</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">4e3cc30</span></td><td>feat: refine cockpit kpis and side cards</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 8 — Weather VS Actual PV (DONE · commit d84c177)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Replace the Weather VS Actual PV placeholder with a real ECharts diagnostic chart. Use real PV1–PV4 string telemetry when available, aggregate PV fallback only when string telemetry is missing, and weather context from GHI/shortwave radiation plus cloud cover.</p>
+            <div class="code">node --check echarts-dashboard/server.js          # → OK
+node --check echarts-dashboard/public/app-v2.js  # → OK
+docker compose -p sig-data -f docker-compose.yml -f /tmp/echarts-v2-override.yml --profile stack up -d --no-deps --build echarts-dashboard
+curl -fsS http://localhost:3321/api/weather-vs-actual | python3 -m json.tool
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">/api/weather-vs-actual</span></td><td><span class="pill ok">PASS</span></td><td>Returned <span class="mono">timezone</span>, <span class="mono">local_date</span>, <span class="mono">source</span>, and hourly rows with PV/string/weather fields.</td></tr>
+                <tr><td>PV source</td><td><span class="pill ok">REAL STRINGS</span></td><td>Browser note showed real PV1–PV4 string telemetry; chart stacked PV1, PV2, PV3, PV4 kW bars.</td></tr>
+                <tr><td>Weather context</td><td><span class="pill ok">VISIBLE</span></td><td>GHI line and cloud cover area/axis visible on the chart.</td></tr>
+                <tr><td>Tooltip safety</td><td><span class="pill ok">IMPLEMENTED</span></td><td>ECharts tooltip uses <span class="mono">appendToBody</span> and body-level z-index to avoid clipping.</td></tr>
+                <tr><td>Null handling</td><td><span class="pill ok">PASS</span></td><td>Missing values are kept as <span class="mono">null</span>; no fake PV1–PV4 values are created.</td></tr>
+                <tr><td>Browser rendering</td><td><span class="pill ok">PASS</span></td><td>Placeholder replaced by canvas chart; PV1–PV4 bars, GHI, cloud cover visible and readable.</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">d84c177</span></td><td>feat: add weather actual pv chart</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 9 — 24h Energy Story (DONE · commit df5eaa9)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Replace the 24h Energy Story placeholder with a fixed 24-hour ECharts view using <span class="mono">/api/history?range=24h</span>. Keep all series in kW and split signed telemetry into readable import/export and charge/discharge stories.</p>
+            <div class="code">node --check echarts-dashboard/server.js          # → OK
+node --check echarts-dashboard/public/app-v2.js  # → OK
+docker compose -p sig-data -f docker-compose.yml -f /tmp/echarts-v2-override.yml --profile stack up -d --no-deps --build echarts-dashboard
+curl -fsS 'http://localhost:3321/api/history?range=24h' | python3 -m json.tool
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">/api/history?range=24h</span></td><td><span class="pill ok">PASS</span></td><td>Returned real 24h series for PV, load, grid flow, battery power, battery SOC, and EV power.</td></tr>
+                <tr><td>Chart series</td><td><span class="pill ok">VISIBLE</span></td><td>Browser showed PV, Home Load, Grid Import, Grid Export, Battery Charge, Battery Discharge, and EV when real EV series exists.</td></tr>
+                <tr><td>Units</td><td><span class="pill ok">kW ONLY</span></td><td>Chart uses power series only; no kWh mixed into the 24h story chart.</td></tr>
+                <tr><td>Sign handling</td><td><span class="pill ok">PASS</span></td><td>Signed grid and battery telemetry split into import/export and charge/discharge without changing source data.</td></tr>
+                <tr><td>Null/zero handling</td><td><span class="pill ok">PASS</span></td><td>Missing points remain null/absent; measured zero remains zero. EV shown only from real <span class="mono">ev_power</span>.</td></tr>
+                <tr><td>Tooltip safety</td><td><span class="pill ok">IMPLEMENTED</span></td><td>ECharts tooltip uses <span class="mono">appendToBody</span> and clipping-safe styling.</td></tr>
+                <tr><td>Browser rendering</td><td><span class="pill ok">PASS</span></td><td>Placeholder replaced by chart canvas; legend and lines readable with no layout overlap.</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">df5eaa9</span></td><td>feat: add 24h energy story chart</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 10 — Responsive Polish (DONE · commit 9d34797)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Tune the V2 cockpit for 1440px desktop, 1000px stacked hero/tablet, 760px single-column chart, and 375px phone-class layouts. Prevent KPI clipping, side-card clipping, hero node overlap, flow-chip crowding, and chart legend crowding while respecting reduced-motion preferences.</p>
+            <div class="code">node --check echarts-dashboard/public/app-v2.js  # → OK
+git diff --check -- echarts-dashboard/public/styles-v2.css echarts-dashboard/public/app-v2.js echarts-dashboard/public/index-v2.html  # → OK
+docker compose -p sig-data -f docker-compose.yml -f /tmp/echarts-v2-override.yml --profile stack up -d --no-deps --build echarts-dashboard
+curl -fsS http://localhost:3321/index-v2.html -o /tmp/sigen-index-v2-task10-final.html
+# Browser snapshot: localhost:3321/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">git diff --check</span></td><td><span class="pill ok">PASS</span></td><td>No whitespace or patch errors</td></tr>
+                <tr><td>1440px desktop</td><td><span class="pill ok">TUNED</span></td><td>KPI gap/padding/font tightened; hero grid right rail tuned to 300px.</td></tr>
+                <tr><td>1000px tablet</td><td><span class="pill ok">TUNED</span></td><td>Hero stacks to one column; side cards wrap as flexible cards with no forced clipping.</td></tr>
+                <tr><td>760px layout</td><td><span class="pill ok">TUNED</span></td><td>Charts become single column, command bar wraps, flow chips compact.</td></tr>
+                <tr><td>375px phone class</td><td><span class="pill ok">TUNED</span></td><td>Flow nodes, chips, side-card grid, and KPI cards shrink for narrow screens.</td></tr>
+                <tr><td>Reduced motion</td><td><span class="pill ok">PASS</span></td><td><span class="mono">prefers-reduced-motion</span> disables live badge pulse, flow path animation, and transitions.</td></tr>
+                <tr><td>Browser rendering</td><td><span class="pill ok">PASS</span></td><td>Desktop browser snapshot showed readable KPIs, side cards, hero map, and chart legends after CSS polish.</td></tr>
+                <tr><td>Console JS errors</td><td><span class="pill ok">NONE</span></td><td>Zero errors in browser console during snapshot</td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+                <tr><td>Commit</td><td><span class="pill ok">9d34797</span></td><td>feat: polish cockpit responsive layout</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 11 — Verification Script (DONE)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Create a repeatable, read-only one-command verification script <span class="mono">scripts/verify-energy-cockpit-v2.sh</span> that checks Node syntax, compose config, health, <span class="mono">/api/cockpit</span>, <span class="mono">/api/weather-vs-actual</span>, <span class="mono">/api/history?range=24h</span>, and the V2 HTML response. The script targets <span class="mono">SIGEN_COCKPIT_BASE_URL</span> (default <span class="mono">http://localhost:3200</span>) so an isolated test container such as <span class="mono">http://localhost:3321</span> can be verified without touching production. It never rebuilds/restarts containers, never switches root, and never commits.</p>
+            <div class="code">node --check echarts-dashboard/server.js          # → OK
+node --check echarts-dashboard/public/app.js      # → OK
+node --check echarts-dashboard/public/app-v2.js   # → OK
+SIGEN_COCKPIT_BASE_URL=http://localhost:3321 bash scripts/verify-energy-cockpit-v2.sh</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td><span class="mono">node --check server.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">node --check app.js</span></td><td><span class="pill ok">PASS</span></td><td>V1 bundle still valid; no syntax errors</td></tr>
+                <tr><td><span class="mono">node --check app-v2.js</span></td><td><span class="pill ok">PASS</span></td><td>No syntax errors</td></tr>
+                <tr><td><span class="mono">docker compose --profile stack config</span></td><td><span class="pill ok">PASS</span></td><td>Rendered 576 non-empty lines to <span class="mono">/tmp/sig-compose-config.out</span></td></tr>
+                <tr><td><span class="mono">/api/health</span></td><td><span class="pill ok">PASS</span></td><td>Valid JSON via <span class="mono">python3 -m json.tool</span></td></tr>
+                <tr><td><span class="mono">/api/cockpit</span></td><td><span class="pill ok">PASS</span></td><td>Valid JSON; <span class="mono">status:"ok"</span> asserted</td></tr>
+                <tr><td><span class="mono">/api/weather-vs-actual</span></td><td><span class="pill ok">PASS</span></td><td>Valid JSON via <span class="mono">python3 -m json.tool</span></td></tr>
+                <tr><td><span class="mono">/api/history?range=24h</span></td><td><span class="pill ok">PASS</span></td><td>Valid JSON via <span class="mono">python3 -m json.tool</span></td></tr>
+                <tr><td><span class="mono">/index-v2.html</span></td><td><span class="pill ok">PASS</span></td><td>Fetched and contains "Energy Cockpit"</td></tr>
+                <tr><td>Isolation</td><td><span class="pill ok">PASS</span></td><td>Ran against <span class="mono">:3321</span> test container; production <span class="mono">:3200</span> untouched</td></tr>
+                <tr><td>No container mutation</td><td><span class="pill ok">PASS</span></td><td>Script only reads; no build/up/restart/stop</td></tr>
+                <tr><td>Exit code / final line</td><td><span class="pill ok">PASS</span></td><td>Exited 0; ended with <span class="mono">Energy Cockpit V2 verification OK</span></td></tr>
+                <tr><td>V1 root</td><td><span class="pill ok">UNCHANGED</span></td><td>index.html, app.js, styles.css untouched</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Task 12 — Isolated Docker / Browser Verification (DONE)</summary>
+          <div style="padding:12px 0 4px">
+            <p><strong>Objective:</strong> Build and run the V2 dashboard as Docker would serve it, without touching the production container on <span class="mono">:3200</span> or staging on <span class="mono">:3400</span>. The isolated verification container is <span class="mono">echarts-dashboard-v2-task12</span> on <span class="mono">127.0.0.1:3322</span>.</p>
+            <div class="code">docker build -t sig-data-echarts-dashboard-v2-task12:latest ./echarts-dashboard
+docker run --name echarts-dashboard-v2-task12 --network sig-data_default -p 127.0.0.1:3322:3200 ...
+SIGEN_COCKPIT_BASE_URL=http://localhost:3322 bash scripts/verify-energy-cockpit-v2.sh
+# Browser: http://localhost:3322/index-v2.html</div>
+            <table style="margin-top:10px">
+              <thead><tr><th>Check</th><th>Result</th><th>Notes</th></tr></thead>
+              <tbody>
+                <tr><td>Image build</td><td><span class="pill ok">PASS</span></td><td><span class="mono">sig-data-echarts-dashboard-v2-task12:latest</span> built from current branch</td></tr>
+                <tr><td>Isolated container</td><td><span class="pill ok">PASS</span></td><td><span class="mono">/echarts-dashboard-v2-task12</span> running, mapped to <span class="mono">127.0.0.1:3322</span></td></tr>
+                <tr><td>Verification script</td><td><span class="pill ok">PASS</span></td><td>Target <span class="mono">http://localhost:3322</span>; final line <span class="mono">Energy Cockpit V2 verification OK</span></td></tr>
+                <tr><td><span class="mono">/index-v2.html</span></td><td><span class="pill ok">PASS</span></td><td>Fetched <span class="mono">9625</span> bytes from the rebuilt container</td></tr>
+                <tr><td>Browser render</td><td><span class="pill ok">PASS</span></td><td>Desktop snapshot showed command bar, KPI ribbon, power flow, side cards, Weather VS Actual PV, 24h Energy Story, and Data Health visible with no obvious clipping/overlap</td></tr>
+                <tr><td>Browser console</td><td><span class="pill ok">PASS</span></td><td>Zero console messages and zero JS errors</td></tr>
+                <tr><td>Production health</td><td><span class="pill ok">HTTP 200</span></td><td><span class="mono">/opt/sigen-production/current</span> still points to <span class="mono">/opt/sigen-production/releases/v1.0.0</span></td></tr>
+                <tr><td>Staging health</td><td><span class="pill ok">HTTP 200</span></td><td>Staging container was not rebuilt/restarted by this check</td></tr>
+                <tr><td>Root switch</td><td><span class="pill stop">NOT RUN</span></td><td>Task 13 still requires explicit user approval after reviewing V2</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <h3 style="margin-top:24px">Roadmap — Remaining Tasks</h3>
+        <table>
+          <thead><tr><th>Task</th><th>Objective</th><th>Key Files</th><th>Verification</th><th>Acceptance</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Task 3</strong><br><span class="pill ok">DONE</span><br><span class="mono">/api/cockpit</span></td>
+              <td>Add compact cockpit-shaped backend endpoint to <span class="mono">server.js</span>. Returns <span class="mono">status, latest, intent, flows, battery, dc_charger, tesla, data_quality</span>. Derive intent and flows from signed telemetry fields. Preserve all existing endpoints.</td>
+              <td><span class="mono">echarts-dashboard/server.js</span></td>
+              <td><div class="code" style="margin:0;padding:8px 10px">node --check echarts-dashboard/server.js
+curl -fsS http://localhost:3200/api/cockpit \
+  | python3 -m json.tool</div></td>
+              <td>Returns JSON with <span class="mono">status:"ok"</span>. Missing telemetry is <span class="mono">null</span> not <span class="mono">0</span>. No secrets in response. Existing endpoints still respond.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 4</strong><br><span class="pill ok">DONE</span><br>Wire live data</td>
+              <td>Connect <span class="mono">app-v2.js</span> to <span class="mono">/api/cockpit</span>. 15s recursive setTimeout refresh. OFFLINE state on error. Null shown as "No telemetry", never coerced to 0.</td>
+              <td><span class="mono">app-v2.js</span>, <span class="mono">index-v2.html</span>, <span class="mono">styles-v2.css</span></td>
+              <td><div class="code" style="margin:0;padding:8px 10px">node --check echarts-dashboard/public/app-v2.js</div>Browser: LIVE badge, KPI values, no JS errors, OFFLINE on backend stop.</td>
+              <td>LIVE badge updates. KPI values render from real data. OFFLINE state appears if backend stops. Real zero and null are distinct.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 5</strong><br><span class="pill ok">DONE</span><br><span class="mono">fdfaf0b</span><br>Hero power flow</td>
+              <td>Build the animated power flow canvas centerpiece. Nodes: PV Array, Home/Load Bus, Grid, Battery, DC Charger, Tesla (contextual). Animated flows only when telemetry active. Inactive flows shown as dim guides.</td>
+              <td><span class="mono">app-v2.js</span>, <span class="mono">styles-v2.css</span>, <span class="mono">public/assets/power-flow-icons/*.svg</span></td>
+              <td>Browser screenshots at desktop and 760–860px. No node overlap. Flow direction correct.</td>
+              <td>No Battery→DC Charger path. EV path is Load Bus→DC Charger→Tesla. Battery directions match telemetry sign. No overlap at 760px.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 6</strong><br><span class="pill ok">DONE</span><br><span class="mono">7bd5373</span><br>Energy Intent card</td>
+              <td>Add human-readable intent derived deterministically from telemetry. Examples: "Using solar for home load", "Charging battery from excess PV", "Importing grid for home load", "Exporting solar surplus", "Battery supporting evening load".</td>
+              <td><span class="mono">server.js</span>, <span class="mono">app-v2.js</span>, <span class="mono">index-v2.html</span>, <span class="mono">styles-v2.css</span></td>
+              <td><span class="pill ok">PASS</span> <span class="mono">/api/cockpit.intent</span> returns primary, secondary bullets, and reasons. Browser card renders evidence lines with no console errors.</td>
+              <td>Intent is deterministic from telemetry. Includes concise evidence lines from real kW values. No LLM-generated text.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 7</strong><br><span class="pill ok">DONE</span><br><span class="mono">4e3cc30</span><br>KPI ribbon &amp; side cards</td>
+              <td>Finalize bento KPI ribbon order (PV Now, Home Load, Grid Flow, Grid Idle 24h, Grid Cost Today, Battery SOC, Weather, Self-use) and right-side Battery Details + DC Charger/Tesla mini-cards.</td>
+              <td><span class="mono">server.js</span>, <span class="mono">index-v2.html</span>, <span class="mono">app-v2.js</span></td>
+              <td><span class="pill ok">PASS</span> Browser snapshot confirmed all 8 KPI tiles and side cards render live values with correct units and no console errors.</td>
+              <td>8 KPI slots visible at desktop. Side cards show correct units. Missing data remains null-safe; measured 0 remains 0.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 8</strong><br><span class="pill ok">DONE</span><br><span class="mono">d84c177</span><br>Weather VS Actual PV</td>
+              <td>Rebuild the PV/weather diagnostic chart. PV1–PV4 stacked bars from real string telemetry; aggregate fallback only if strings unavailable and clearly labelled. GHI/shortwave radiation as line. Tooltip appended to body to prevent clipping.</td>
+              <td><span class="mono">index-v2.html</span>, <span class="mono">app-v2.js</span>, <span class="mono">styles-v2.css</span></td>
+              <td><span class="pill ok">PASS</span> Browser snapshot confirmed chart canvas with PV1–PV4 bars, GHI line, cloud cover, and zero console errors.</td>
+              <td>Stacked bars use real PV string data. Aggregate fallback is labelled when needed. Tooltip is body-appended. Null remains null.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 9</strong><br><span class="pill ok">DONE</span><br><span class="mono">df5eaa9</span><br>24h Energy Story</td>
+              <td>Fixed 24h history chart (not range-linked). Series: PV power, home load, grid import/export, battery charge/discharge, EV power if present. Fetch <span class="mono">/api/history?range=24h</span>.</td>
+              <td><span class="mono">server.js</span>, <span class="mono">app-v2.js</span>, <span class="mono">index-v2.html</span></td>
+              <td><span class="pill ok">PASS</span> Browser snapshot confirmed chart canvas with PV, load, grid import/export, battery charge/discharge, and EV when real telemetry exists.</td>
+              <td>Chart shows fixed 24h power window. All chart series are kW. EV line is real-data only. Missing values stay null-safe.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 10</strong><br><span class="pill ok">DONE</span><br><span class="mono">9d34797</span><br>Responsive polish</td>
+              <td>Make cockpit usable at all breakpoints. 1440px: tighten KPI ribbon. 1000px: hero single column. 760px: charts single column and compact chips. 375px: shrink flow nodes/chips. Respect <span class="mono">prefers-reduced-motion</span>.</td>
+              <td><span class="mono">styles-v2.css</span></td>
+              <td><span class="pill ok">PASS</span> CSS breakpoint rules added and desktop browser snapshot verified after rebuild with no console errors.</td>
+              <td>Desktop verified; CSS covers 1440/1000/760/375 breakpoints. Flow animations and transitions disabled for reduced motion.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 11</strong><br><span class="pill ok">DONE</span><br>Verify script</td>
+              <td>Created a repeatable one-command verification script that checks syntax, compose, health, cockpit endpoint, weather/PV endpoint, 24h history endpoint, and the V2 HTML response.</td>
+              <td>Create: <span class="mono">scripts/verify-energy-cockpit-v2.sh</span>; update <span class="mono">docs/production-release.md</span></td>
+              <td><div class="code" style="margin:0;padding:8px 10px">SIGEN_COCKPIT_BASE_URL=http://localhost:3321 bash scripts/verify-energy-cockpit-v2.sh</div></td>
+              <td>Script exited 0 against the isolated <span class="mono">:3321</span> test container. All checks passed. Output ended with "Energy Cockpit V2 verification OK". Production <span class="mono">:3200</span> was not rebuilt or restarted.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 12</strong><br><span class="pill ok">DONE</span><br>Staging / Docker verify</td>
+              <td>Rebuilt an isolated Docker image/container with V2 files and verified the real served page from <span class="mono">127.0.0.1:3322</span>. Production and staging containers were not touched.</td>
+              <td>No file changes — operational only</td>
+              <td><div class="code" style="margin:0;padding:8px 10px">SIGEN_COCKPIT_BASE_URL=http://localhost:3322 bash scripts/verify-energy-cockpit-v2.sh
+curl -fsS http://localhost:3322/index-v2.html -o /tmp/sigen-task12-index-v2.html</div>Browser: opened localhost:3322/index-v2.html, checked console and visual layout.</td>
+              <td>Isolated rebuilt container served V2. <span class="mono">/index-v2.html</span> returned 200 / 9625 bytes. Browser showed cockpit layout with zero JS console errors.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 13</strong><br><span class="pill stop">requires approval</span><br>Root switch</td>
+              <td>Make V2 the default dashboard. Preserve V1 as <span class="mono">/index-v1.html</span>. Switch Express root route or rename index files. <strong>Do not execute without explicit user sign-off on rendered V2 screenshots.</strong></td>
+              <td><span class="mono">echarts-dashboard/public/index.html</span> (rename to index-v1.html), <span class="mono">index-v2.html</span> becomes new root (or Express redirect)</td>
+              <td><div class="code" style="margin:0;padding:8px 10px">curl -fsS http://localhost:3200/ -o /tmp/sigen-root.html
+grep -i "Energy Cockpit" /tmp/sigen-root.html
+curl -fsS http://localhost:3200/index-v1.html | head -3</div></td>
+              <td>Root loads V2. V1 still reachable at <span class="mono">/index-v1.html</span>. Health endpoint OK. User confirms visual layout.</td>
+            </tr>
+            <tr>
+              <td><strong>Task 14</strong><br><span class="pill stop">after Task 13</span><br>Production release</td>
+              <td>Tag, deploy, and write release notes. Update <span class="mono">docs/production-release.md</span> and this tracker. Target tag: <span class="mono">v1.1.0</span> or <span class="mono">v2.0.0</span> per user preference.</td>
+              <td><span class="mono">docs/production-release.md</span>, <span class="mono">docs/ci-cd-tracker.html</span>, new <span class="mono">docs/energy-cockpit-v2-release-notes.md</span></td>
+              <td><div class="code" style="margin:0;padding:8px 10px">bash scripts/verify-energy-cockpit-v2.sh
+git tag -a v1.1.0 -m "Sigen Energy Cockpit V2 UI revamp"
+git push origin feature/sigen-energy-cockpit-v2
+git push origin v1.1.0</div>Production deploy via existing release workflow (<span class="mono">deploy-production.yml</span>).</td>
+              <td>Health OK post-deploy. Root shows V2. Data refreshes at 15s. Release docs contain evidence. Rollback options documented.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:24px">Launch Stages</h3>
+        <table>
+          <thead><tr><th>Stage</th><th>Goal</th><th>Tasks</th><th>Gate</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Stage 0</strong> — Discovery &amp; Freeze</td><td>Reproducible baseline before any UI changes. Branch created, API probed, baseline docs captured.</td><td>Task 1</td><td><span class="pill ok">DONE</span> No production restart. V1 unchanged.</td></tr>
+            <tr><td><strong>Stage 1</strong> — V2 Prototype Route</td><td>Add V2 entry point beside V1. Static shell served at <span class="mono">/index-v2.html</span> without touching V1 root.</td><td>Task 2</td><td><span class="pill ok">DONE</span> Files committed. 404 until container rebuild (Task 12).</td></tr>
+            <tr><td><strong>Stage 2</strong> — Data Contract</td><td>Add <span class="mono">/api/cockpit</span> shaped endpoint. Wire V2 frontend to live telemetry. LIVE/OFFLINE state, null-safe rendering.</td><td>Tasks 3–4</td><td><span class="pill ok">DONE</span> <span class="mono">curl /api/cockpit</span> returns valid JSON. V2 shows real data. LIVE badge confirmed in browser.</td></tr>
+            <tr><td><strong>Stage 3</strong> — Visual Revamp</td><td>Implement polished cockpit UI: hero flow canvas, intent card, KPI ribbon, side cards, 24h story, responsive breakpoints.</td><td>Tasks 5–10</td><td><span class="pill ok">DONE</span> Browser snapshots and syntax checks completed through responsive polish; no JS errors observed.</td></tr>
+            <tr><td><strong>Stage 4</strong> — Staging, Root Switch, Release</td><td>Rebuild container, browser-verify, get user approval, switch root, tag and deploy to production.</td><td>Tasks 11–14</td><td><span class="pill warn">IN PROGRESS</span> Tasks 11–12 verification are done; next is Task 13 root switch only after explicit user approval.</td></tr>
+          </tbody>
+        </table>
+
+        <h3 style="margin-top:24px">Rollback Strategy</h3>
+        <div class="grid-2" style="margin-top:12px">
+          <div class="card">
+            <p class="eyebrow">Fast UI Rollback</p>
+            <p>Restore <span class="mono">index-v1.html</span> as root without any container rebuild or deploy. Fastest option — seconds.</p>
+            <div class="code" style="margin-top:10px">cp echarts-dashboard/public/index-v1.html \
+   echarts-dashboard/public/index.html
+docker compose --profile stack up -d --build echarts-dashboard</div>
+          </div>
+          <div class="card">
+            <p class="eyebrow">Git Rollback</p>
+            <p>Revert the Task 13 root-switch commit. Keeps V2 files in repo for re-attempt.</p>
+            <div class="code" style="margin-top:10px">git revert &lt;task-13-commit-sha&gt;
+git push origin feature/sigen-energy-cockpit-v2</div>
+          </div>
+          <div class="card">
+            <p class="eyebrow">Container Rollback</p>
+            <p>Redeploy previous tag via existing production release workflow. Rollback targets: <span class="mono">v1.0.1</span> → <span class="mono">v1.0.0</span>.</p>
+            <div class="code" style="margin-top:10px"># Via GitHub Actions deploy-production.yml
+# Set tag=v1.0.1 and dry_run=false</div>
+          </div>
+          <div class="card">
+            <p class="eyebrow">Pre-Switch Safety</p>
+            <p>V1 root is <strong>never overwritten</strong> until Task 13. At any point before that, <span class="mono">index.html</span> = V1 and rollback is a no-op.</p>
+          </div>
+        </div>
+
+        <h3 style="margin-top:24px">Design Goals</h3>
+        <table>
+          <thead><tr><th>Principle</th><th>Current V1 Gap</th><th>V2 Target</th></tr></thead>
+          <tbody>
+            <tr><td>Hero First</td><td>Power flow is one panel among many</td><td>Full-width animated power flow canvas is the centerpiece</td></tr>
+            <tr><td>Realtime Trust</td><td>No explicit LIVE/OFFLINE or freshness indicator</td><td>LIVE badge, updated timestamp, auto-refresh 15s</td></tr>
+            <tr><td>Energy Intent</td><td>No plain-language system state card</td><td>Intent card: "Using solar for home load", "Charging battery from excess PV", etc.</td></tr>
+            <tr><td>Fewer Stronger Cards</td><td>Dense equal-weight panels</td><td>Bento KPI ribbon + main hero + 2-card analysis row</td></tr>
+            <tr><td>Honest Telemetry</td><td>PV strings, battery modules, EV must stay real</td><td>Null shown as "No data" — never fake zero</td></tr>
+            <tr><td>Tablet Readable</td><td>May be tight at 760–860px</td><td>Explicit breakpoints at 1200/1000/760/560px</td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout" style="margin-top:20px"><strong>Next immediate action — Task 13 requires approval.</strong> Review the rendered V2 cockpit from the isolated container. If approved, preserve V1 as <span class="mono">/index-v1.html</span> and make V2 the default root; do not run this switch without explicit approval.</div>
+
+        <div class="code"># Resume V2 revamp work
+git checkout feature/sigen-energy-cockpit-v2
+cat docs/sigen-energy-cockpit-v2-baseline.md
+cat .hermes/plans/2026-07-12_033852-sigen-realtime-energy-flow-v2-revamp.md
+
+# Rebuild container to serve V2 static files (resolves current 404 on /index-v2.html)
+docker compose --profile stack up -d --build echarts-dashboard</div>
       </section>
 
       <section id="resume">

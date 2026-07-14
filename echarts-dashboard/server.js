@@ -621,6 +621,7 @@ from(bucket: "${INFLUXDB_BUCKET}")
 
   const pvKwh = integrateKwh(byField.pv_power || [], v => Math.max(0, v));
   const gridImportKwh = integrateKwh(byField.grid_flow_power || [], v => Math.max(0, -v));
+  const gridExportKwh = integrateKwh(byField.grid_flow_power || [], v => Math.max(0, v));
   const batteryDischargeKwh = integrateKwh(byField.battery_power || [], v => Math.max(0, -v));
   const generatorKwh = byField.generator_power
     ? integrateKwh(byField.generator_power, v => Math.max(0, v))
@@ -635,6 +636,7 @@ from(bucket: "${INFLUXDB_BUCKET}")
   const sources = {
     pv_solar: parseFloat(pvKwh.toFixed(3)),
     grid_import: parseFloat(gridImportKwh.toFixed(3)),
+    grid_export: parseFloat(gridExportKwh.toFixed(3)),
     battery_discharge: parseFloat(batteryDischargeKwh.toFixed(3)),
   };
   if (generatorKwh !== null) sources.generator = parseFloat(generatorKwh.toFixed(3));
@@ -2858,6 +2860,265 @@ function startTelegramScheduler() {
   console.log(`Telegram hourly report scheduled in ${Math.round(firstDelayMs / 60000)} minutes, then every ${Math.round(TELEGRAM_REPORT_INTERVAL_MS / 60000)} minutes.`);
 }
 
+// ── Cockpit helpers ─────────────────────────────────────────────────────────
+
+function deriveCockpitIntent(e) {
+  const pv = toNumber(e.pv_power);
+  const grid = toNumber(e.grid_flow_power);
+  const battery = toNumber(e.battery_power);
+  const ev = toNumber(e.ev_power);
+  const THRESH = 0.05;
+
+  if (pv === null && grid === null && battery === null) {
+    return { primary: 'Waiting for fresh telemetry', secondary: [], reasons: [], state: 'no_data' };
+  }
+
+  const pvActive = pv !== null && pv > THRESH;
+  const gridImporting = grid !== null && grid < -THRESH;
+  const gridExporting = grid !== null && grid > THRESH;
+  const battCharging = battery !== null && battery > THRESH;
+  const battDischarging = battery !== null && battery < -THRESH;
+  const evActive = ev !== null && ev > THRESH;
+
+  // Build evidence trail from raw telemetry values
+  const reasons = [];
+  if (pv !== null) reasons.push(pvActive ? `PV ${pv.toFixed(2)} kW active` : 'PV not generating');
+  if (grid !== null) {
+    if (gridImporting) reasons.push(`Grid importing ${Math.abs(grid).toFixed(2)} kW`);
+    else if (gridExporting) reasons.push(`Grid exporting ${grid.toFixed(2)} kW`);
+    else reasons.push('Grid idle (no import/export)');
+  }
+  if (battery !== null) {
+    if (battCharging) reasons.push(`Battery charging at ${battery.toFixed(2)} kW`);
+    else if (battDischarging) reasons.push(`Battery discharging at ${Math.abs(battery).toFixed(2)} kW`);
+    else reasons.push('Battery idle');
+  }
+  if (evActive) reasons.push(`EV drawing ${ev.toFixed(2)} kW`);
+
+  const secondary = [];
+  let primary, state;
+
+  if (pvActive) {
+    if (battCharging && !gridExporting) {
+      primary = 'Charging battery from excess PV';
+      state = 'solar_charging_battery';
+    } else if (gridExporting) {
+      primary = 'Exporting solar surplus';
+      state = 'solar_export';
+    } else {
+      primary = 'Using solar for home load';
+      state = 'solar_to_home';
+    }
+    if (battCharging) secondary.push(`Battery charging at ${battery.toFixed(2)} kW`);
+    if (gridImporting) secondary.push(`Also importing ${Math.abs(grid).toFixed(2)} kW from grid`);
+    if (gridExporting) secondary.push(`Exporting ${grid.toFixed(2)} kW to grid`);
+  } else if (battDischarging) {
+    // Use time-of-day to label the evening peak discharge scenario
+    const hour = new Date().getHours();
+    const isEvening = hour >= 17 && hour < 23;
+    primary = isEvening ? 'Battery supporting evening load' : 'Battery supporting home load';
+    state = 'battery_to_home';
+    if (gridImporting) secondary.push(`Also importing ${Math.abs(grid).toFixed(2)} kW from grid`);
+  } else if (gridImporting) {
+    primary = 'Importing grid for home load';
+    state = 'grid_to_home';
+  } else if (gridExporting) {
+    primary = 'Exporting to grid';
+    state = 'grid_export';
+  } else {
+    primary = 'System idle';
+    state = 'idle';
+  }
+
+  if (evActive) secondary.push(`EV charging ${ev.toFixed(2)} kW from load bus`);
+  return { primary, secondary, reasons, state };
+}
+
+function buildCockpitFlows(e) {
+  const THRESH = 0.05;
+  const flows = [];
+
+  const pv = toNumber(e.pv_power);
+  const grid = toNumber(e.grid_flow_power);
+  const battery = toNumber(e.battery_power);
+  const ev = toNumber(e.ev_power);
+
+  if (pv !== null) {
+    flows.push({ from: 'PV', to: 'Home', kw: parseFloat(Math.max(0, pv).toFixed(3)), active: pv > THRESH, type: 'solar' });
+  }
+
+  if (grid !== null) {
+    if (grid < -THRESH) {
+      flows.push({ from: 'Grid', to: 'Home', kw: parseFloat(Math.abs(grid).toFixed(3)), active: true, type: 'grid_import' });
+    } else if (grid > THRESH) {
+      flows.push({ from: 'Home', to: 'Grid', kw: parseFloat(grid.toFixed(3)), active: true, type: 'grid_export' });
+    } else {
+      flows.push({ from: 'Grid', to: 'Home', kw: 0, active: false, type: 'grid_idle' });
+    }
+  }
+
+  if (battery !== null) {
+    if (battery > THRESH) {
+      flows.push({ from: 'Home', to: 'Battery', kw: parseFloat(battery.toFixed(3)), active: true, type: 'battery_charge' });
+    } else if (battery < -THRESH) {
+      flows.push({ from: 'Battery', to: 'Home', kw: parseFloat(Math.abs(battery).toFixed(3)), active: true, type: 'battery_discharge' });
+    } else {
+      flows.push({ from: 'Battery', to: 'Home', kw: 0, active: false, type: 'battery_idle' });
+    }
+  }
+
+  if (ev !== null && ev > THRESH) {
+    flows.push({ from: 'Home', to: 'DC Charger', kw: parseFloat(ev.toFixed(3)), active: true, type: 'ev_charging' });
+  }
+
+  return flows;
+}
+
+function buildCockpitBattery(snapshot) {
+  const e = snapshot.energy || {};
+  const batMeta = snapshot.battery || {};
+  const power = toNumber(e.battery_power);
+  const soc = toNumber(e.battery_soc);
+  const THRESH = 0.05;
+
+  let mode = 'unknown';
+  if (power !== null) {
+    if (power > THRESH) mode = 'charging';
+    else if (power < -THRESH) mode = 'discharging';
+    else mode = 'idle';
+  }
+
+  const totalKwh = toNumber(batMeta.total_capacity_kwh);
+  const storedKwh = (soc !== null && totalKwh !== null)
+    ? parseFloat(((soc / 100) * totalKwh).toFixed(2))
+    : null;
+
+  let time_estimate = null;
+  if (power !== null && Math.abs(power) > THRESH && storedKwh !== null && totalKwh !== null) {
+    if (mode === 'discharging') {
+      const h = storedKwh / Math.abs(power);
+      time_estimate = `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m remaining`;
+    } else if (mode === 'charging') {
+      const h = (totalKwh - storedKwh) / power;
+      if (h > 0) time_estimate = `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m to full`;
+    }
+  }
+
+  const modules = (snapshot.battery_modules || []).map(m => {
+    const entry = { battery_index: m.battery_index, device_sn: m.device_sn || null };
+    const mSoc = toNumber(m.battery_soc);
+    const mVolt = toNumber(m.voltage);
+    const mTemp = toNumber(m.temperature);
+    if (mSoc !== null) entry.soc = parseFloat(mSoc.toFixed(1));
+    if (mVolt !== null) entry.voltage = parseFloat(mVolt.toFixed(2));
+    if (mTemp !== null) entry.temperature = parseFloat(mTemp.toFixed(1));
+    return entry;
+  });
+
+  return { mode, soc, power_kw: power, stored_kwh: storedKwh, time_estimate, modules };
+}
+
+function buildCockpitDcCharger(e) {
+  const ev = toNumber(e.ev_power);
+  let status = 'no_data';
+  if (ev !== null) status = ev > 0.05 ? 'charging' : 'idle';
+  return {
+    status,
+    power_kw: ev,
+    route: 'Home / Load Bus → DC Charger → Tesla Model Y',
+  };
+}
+
+function buildCockpitTesla(teslaData) {
+  if (!teslaData || !teslaData.has_data) {
+    return { status: 'no_data', vehicle_name: null, soc_pct: null, charge_state: null, charger_power_kw: null, latest_time: null };
+  }
+  const charge = teslaData.charge || {};
+  const vehicle = teslaData.vehicle || {};
+  return {
+    status: 'ok',
+    vehicle_name: vehicle.vehicle_name || null,
+    soc_pct: toNumber(charge.battery_level_pct),
+    charge_state: charge.charging_state || null,
+    charger_power_kw: toNumber(charge.charger_power_kw),
+    latest_time: teslaData.latest_time || null,
+  };
+}
+
+function buildCockpitWeather(weather) {
+  if (!weather || !Object.keys(weather).length) {
+    return { status: 'no_data', temperature_c: null, humidity_pct: null, wind_speed_kmh: null, condition_code: null };
+  }
+  const temp = toNumber(weather.temperature);
+  const hum = toNumber(weather.humidity);
+  const wind = toNumber(weather.windspeed);
+  const code = toNumber(weather.weathercode);
+  return {
+    status: 'ok',
+    temperature_c: temp !== null ? parseFloat(temp.toFixed(1)) : null,
+    humidity_pct: hum !== null ? parseFloat(hum.toFixed(1)) : null,
+    wind_speed_kmh: wind !== null ? parseFloat(wind.toFixed(1)) : null,
+    condition_code: code,
+  };
+}
+
+function buildCockpitDataQuality(snapshot) {
+  const ts = snapshot.timestamp || null;
+  const age_seconds = ts ? Math.round((Date.now() - new Date(ts).getTime()) / 1000) : null;
+  const stale = age_seconds === null || age_seconds * 1000 > DATA_STALE_THRESHOLD_MS;
+  return { latest_time: ts, age_seconds, stale };
+}
+
+function buildCockpitKpis(snapshot) {
+  const daily = snapshot.daily || {};
+  const mix = daily.energy_sources_today;
+
+  const gridIdleHours = typeof daily.grid_idle_hours === 'number' ? daily.grid_idle_hours : null;
+  const gridIdleMinutes = typeof daily.grid_idle_minutes === 'number' ? daily.grid_idle_minutes : null;
+  const gridCostThb = typeof daily.grid_cost_thb_today === 'number' ? daily.grid_cost_thb_today : null;
+  const gridCostRateThb = daily.grid_cost_rate_thb_per_kwh || null;
+  const gridImportKwh = typeof daily.grid_import_kwh_today === 'number' ? daily.grid_import_kwh_today : null;
+
+  let selfUsePct = null;
+  if (mix && mix.sources) {
+    const pvKwh = mix.sources.pv_solar || 0;
+    const gridExportKwh = mix.sources.grid_export || 0;
+    if (pvKwh > 0) {
+      selfUsePct = parseFloat(Math.min(100, Math.max(0, (pvKwh - gridExportKwh) / pvKwh * 100)).toFixed(1));
+    }
+  }
+
+  return {
+    grid_idle_hours: gridIdleHours,
+    grid_idle_minutes: gridIdleMinutes,
+    grid_cost_thb: gridCostThb,
+    grid_cost_rate_thb_per_kwh: gridCostRateThb,
+    grid_import_kwh: gridImportKwh,
+    self_use_pct: selfUsePct,
+  };
+}
+
+// Frontend-friendly per-string PV device view. Preserves null for any missing
+// string/total — never fabricates or splits an aggregate into fake per-string values.
+function buildCockpitPvStrings(snapshot) {
+  const ps = snapshot.pv_strings || {};
+  const num = (v) => toNumber(v);
+  const total = num(ps.pv_total_power);
+  return {
+    pv1_power: num(ps.pv1_power),
+    pv2_power: num(ps.pv2_power),
+    pv3_power: num(ps.pv3_power),
+    pv4_power: num(ps.pv4_power),
+    pv_total_power: total,
+    pv_string_total_power: total,
+    source: ps.source || null,
+    device_sn: ps.device_sn || null,
+    latest_time: ps.timestamp || null,
+  };
+}
+
+// ── End cockpit helpers ──────────────────────────────────────────────────────
+
 app.use(express.json({ limit: '64kb' }));
 app.use(basicAuth);
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -2972,6 +3233,46 @@ from(bucket: "${INFLUXDB_BUCKET}")
       batterySoc: { value: raw.battery_soc ?? null, unit: '%' },
       batteryPower: { value: raw.battery_power ?? null, unit: 'kW' },
       raw,
+    });
+  } catch (err) {
+    apiError(res, err);
+  }
+});
+
+app.get('/api/cockpit', async (req, res) => {
+  try {
+    const [snapshot, teslaData] = await Promise.all([
+      fetchLatestSnapshot(),
+      fetchTeslaLatest().catch(() => ({ has_data: false })),
+    ]);
+
+    const e = snapshot.energy || {};
+    const dataQuality = buildCockpitDataQuality(snapshot);
+    const intent = dataQuality.stale
+      ? { primary: 'Waiting for fresh telemetry', secondary: [], state: 'stale' }
+      : deriveCockpitIntent(e);
+
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      refresh_interval_seconds: SLEEP_INTERVAL_S,
+      latest: {
+        pv_power: toNumber(e.pv_power),
+        load_power: toNumber(e.load_power),
+        grid_flow_power: toNumber(e.grid_flow_power),
+        battery_power: toNumber(e.battery_power),
+        battery_soc: toNumber(e.battery_soc),
+        ev_power: toNumber(e.ev_power),
+      },
+      intent,
+      flows: buildCockpitFlows(e),
+      pv_strings: buildCockpitPvStrings(snapshot),
+      battery: buildCockpitBattery(snapshot),
+      dc_charger: buildCockpitDcCharger(e),
+      tesla: buildCockpitTesla(teslaData),
+      weather: buildCockpitWeather(snapshot.weather || {}),
+      kpis: buildCockpitKpis(snapshot),
+      data_quality: dataQuality,
     });
   } catch (err) {
     apiError(res, err);
@@ -3117,7 +3418,7 @@ app.post('/api/telegram/send-alert-test', async (req, res) => {
 app.get('/api/history', async (req, res) => {
   try {
     const fields = ['pv_power', 'load_power', 'grid_flow_power', 'battery_power',
-      'battery_soc', 'pv_day_nrg', 'on_grid', 'station_status', 'grid_idle'];
+      'battery_soc', 'pv_day_nrg', 'on_grid', 'station_status', 'grid_idle', 'ev_power'];
     const fieldFilter = fields.map(f => `r._field == "${f}"`).join(' or ');
 
     if (req.query.date) {
