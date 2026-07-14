@@ -3058,6 +3058,25 @@ function buildCockpitKpis(snapshot) {
   };
 }
 
+// Frontend-friendly per-string PV device view. Preserves null for any missing
+// string/total — never fabricates or splits an aggregate into fake per-string values.
+function buildCockpitPvStrings(snapshot) {
+  const ps = snapshot.pv_strings || {};
+  const num = (v) => toNumber(v);
+  const total = num(ps.pv_total_power);
+  return {
+    pv1_power: num(ps.pv1_power),
+    pv2_power: num(ps.pv2_power),
+    pv3_power: num(ps.pv3_power),
+    pv4_power: num(ps.pv4_power),
+    pv_total_power: total,
+    pv_string_total_power: total,
+    source: ps.source || null,
+    device_sn: ps.device_sn || null,
+    latest_time: ps.timestamp || null,
+  };
+}
+
 // ── End cockpit helpers ──────────────────────────────────────────────────────
 
 app.use(express.json({ limit: '64kb' }));
@@ -3204,6 +3223,7 @@ app.get('/api/cockpit', async (req, res) => {
       },
       intent,
       flows: buildCockpitFlows(e),
+      pv_strings: buildCockpitPvStrings(snapshot),
       battery: buildCockpitBattery(snapshot),
       dc_charger: buildCockpitDcCharger(e),
       tesla: buildCockpitTesla(teslaData),

@@ -284,23 +284,19 @@
     ev_charging:      'chip-dc',
   };
 
-  const FLOW_LINE_IDS = {
-    solar: 'line-pv-home',
-    grid_import: 'line-grid-home',
-    grid_export: 'line-home-grid',
-    battery_charge: 'line-home-battery',
-    battery_discharge: 'line-battery-home',
-    ev_charging: 'line-home-dc',
-  };
+  const ACTIVE_THRESH = 0.05;
+
+  const TOPO_NODES = ['dev-pv1', 'dev-pv2', 'dev-pv3', 'dev-pv4', 'node-pvtotal', 'node-grid', 'node-home', 'node-battery', 'node-dc', 'node-tesla'];
+  const TOPO_LINKS = ['link-pv', 'link-total-home', 'link-home-dc'];
 
   function resetFlowMap() {
-    ['line-pv-home', 'line-grid-home', 'line-home-grid', 'line-home-battery', 'line-battery-home', 'line-home-dc', 'line-dc-tesla'].forEach(function(id) {
-      const line = el(id);
-      if (line) line.classList.remove('active', 'reverse');
-    });
-    ['node-pv', 'node-grid', 'node-home', 'node-battery', 'node-dc', 'node-tesla'].forEach(function(id) {
+    TOPO_NODES.forEach(function(id) {
       const node = el(id);
       if (node) node.classList.remove('active', 'idle');
+    });
+    TOPO_LINKS.forEach(function(id) {
+      const link = el(id);
+      if (link) link.classList.remove('active');
     });
   }
 
@@ -311,8 +307,79 @@
     node.classList.toggle('idle', !!idle && !active);
   }
 
+  function setLinkState(id, active) {
+    const link = el(id);
+    if (link) link.classList.toggle('active', !!active);
+  }
+
   function flowValueText(val) {
     return isNullish(val) ? '—' : val.toFixed(2) + ' kW';
+  }
+
+  const PV_STRINGS = [
+    { key: 'pv1_power', dev: 'dev-pv1', val: 'pv1-value', sub: 'pv1-sub', label: 'PV1' },
+    { key: 'pv2_power', dev: 'dev-pv2', val: 'pv2-value', sub: 'pv2-sub', label: 'PV2' },
+    { key: 'pv3_power', dev: 'dev-pv3', val: 'pv3-value', sub: 'pv3-sub', label: 'PV3' },
+    { key: 'pv4_power', dev: 'dev-pv4', val: 'pv4-value', sub: 'pv4-sub', label: 'PV4' },
+  ];
+
+  // Render each PV string device from real per-string telemetry. Missing values
+  // show 'No data' (never fabricated). Returns the list of active strings.
+  function applyPvStrings(data) {
+    const ps = data.pv_strings || {};
+    const activeStrings = [];
+
+    PV_STRINGS.forEach(function(s) {
+      const v = ps[s.key];
+      if (isNullish(v)) {
+        setText(s.val, '—');
+        setText(s.sub, 'No data');
+        setNodeState(s.dev, false, false);
+      } else {
+        const kw = Math.max(0, v);
+        const active = kw > ACTIVE_THRESH;
+        setText(s.val, kw.toFixed(2) + ' kW');
+        setText(s.sub, active ? 'Producing' : 'Idle');
+        setNodeState(s.dev, active, !active);
+        if (active) activeStrings.push({ label: s.label, kw: kw });
+      }
+    });
+
+    // PV Total hub — prefer the real string total; preserve null when absent.
+    const total = !isNullish(ps.pv_string_total_power) ? ps.pv_string_total_power
+      : (!isNullish(ps.pv_total_power) ? ps.pv_total_power : null);
+    if (isNullish(total)) {
+      setText('flow-pvtotal-value', '—');
+      setText('pvtotal-sub', 'No data');
+      setNodeState('node-pvtotal', false, false);
+    } else {
+      const kw = Math.max(0, total);
+      const active = kw > ACTIVE_THRESH;
+      setText('flow-pvtotal-value', kw.toFixed(2) + ' kW');
+      setText('pvtotal-sub', active ? 'PV producing' : 'Idle');
+      setNodeState('node-pvtotal', active, !active);
+      setLinkState('link-pv', active);
+    }
+
+    return activeStrings;
+  }
+
+  // Battery aggregate modules (Battery 1/2 …) from battery.modules when present.
+  function applyBatteryModules(data) {
+    const modules = ((data.battery || {}).modules) || [];
+    const wrap = el('battery-modules');
+    if (!wrap) return;
+    if (!modules.length) {
+      wrap.innerHTML = '';
+      wrap.hidden = true;
+      return;
+    }
+    wrap.hidden = false;
+    wrap.innerHTML = modules.map(function(m, i) {
+      const idx = m.battery_index || (i + 1);
+      const soc = isNullish(m.soc) ? 'No data' : Math.round(m.soc) + '%';
+      return '<span class="batt-module">B' + safeHtml(idx) + ' · ' + safeHtml(soc) + '</span>';
+    }).join('');
   }
 
   function applyFlows(data) {
@@ -323,53 +390,104 @@
 
     resetFlowMap();
 
-    setText('flow-pv-value', flowValueText(lat.pv_power));
+    // PV strings + total hub first (drives the solar links & chips).
+    const activeStrings = applyPvStrings(data);
+    applyBatteryModules(data);
+
     setText('flow-home-value', flowValueText(lat.load_power));
     setText('flow-grid-value', flowValueText(lat.grid_flow_power));
     setText('flow-battery-value', isNullish(lat.battery_power) ? '—' : flowValueText(Math.abs(lat.battery_power)));
     setText('flow-dc-value', flowValueText(lat.ev_power));
 
+    // Index flows by type for direct lookup.
+    const byType = {};
+    flows.forEach(function(f) { byType[f.type] = f; });
+
+    // ── Grid node + sublabel: Import / Export / Idle / No data ────────────────
+    const gridImport = byType.grid_import;
+    const gridExport = byType.grid_export;
+    if (gridImport && gridImport.active) {
+      setNodeState('node-grid', true, false);
+      setText('grid-sub', 'Import');
+    } else if (gridExport && gridExport.active) {
+      setNodeState('node-grid', true, false);
+      setText('grid-sub', 'Export');
+    } else if (byType.grid_idle || gridImport || gridExport) {
+      setNodeState('node-grid', false, true);
+      setText('grid-sub', 'Idle');
+    } else {
+      setNodeState('node-grid', false, false);
+      setText('grid-sub', 'No data');
+    }
+
+    // ── Battery node + sublabel: Charging / Discharging / Idle / No data ──────
+    const battCharge = byType.battery_charge;
+    const battDischarge = byType.battery_discharge;
+    if (battCharge && battCharge.active) {
+      setNodeState('node-battery', true, false);
+      setText('battery-sub', 'Charging');
+    } else if (battDischarge && battDischarge.active) {
+      setNodeState('node-battery', true, false);
+      setText('battery-sub', 'Discharging');
+    } else if (byType.battery_idle || battCharge || battDischarge) {
+      setNodeState('node-battery', false, true);
+      setText('battery-sub', 'Idle');
+    } else {
+      setNodeState('node-battery', false, false);
+      setText('battery-sub', 'No data');
+    }
+
+    // ── Home / Load bus + PV Total -> Home link ──────────────────────────────
+    const solar = byType.solar;
+    const anyActive = flows.some(function(f) { return f.active; });
+    setNodeState('node-home', anyActive, !anyActive);
+    setLinkState('link-total-home', !!(solar && solar.active));
+
+    // ── DC Charger -> Tesla (contextual): Charging / Idle / No data ──────────
+    const ev = byType.ev_charging;
+    if (ev && ev.active) {
+      setNodeState('node-dc', true, false);
+      setNodeState('node-tesla', true, false);
+      setLinkState('link-home-dc', true);
+      setText('dc-sub', 'Charging');
+      setText('tesla-sub', 'Charging context');
+    } else if (!isNullish(lat.ev_power)) {
+      setNodeState('node-dc', false, true);
+      setNodeState('node-tesla', false, true);
+      setText('dc-sub', 'Idle');
+      setText('tesla-sub', 'Contextual');
+    } else {
+      setNodeState('node-dc', false, false);
+      setNodeState('node-tesla', false, false);
+      setText('dc-sub', 'No data');
+      setText('tesla-sub', 'Contextual');
+    }
+
     const existing = el('flow-chips');
     if (existing) existing.remove();
 
-    const active = flows.filter(function(f) { return f.active; });
-    const empty = el('flow-empty');
-    if (empty) empty.hidden = active.length > 0;
-
-    flows.forEach(function(f) {
-      const lineId = FLOW_LINE_IDS[f.type];
-      const line = lineId ? el(lineId) : null;
-      if (line && f.active) line.classList.add('active');
-
-      if (f.type === 'solar') setNodeState('node-pv', f.active, true);
-      if (f.type === 'grid_import' || f.type === 'grid_export' || f.type === 'grid_idle') setNodeState('node-grid', f.active, true);
-      if (f.type === 'battery_charge' || f.type === 'battery_discharge' || f.type === 'battery_idle') setNodeState('node-battery', f.active, true);
-      if (f.type === 'ev_charging') {
-        setNodeState('node-dc', true, false);
-        setNodeState('node-tesla', true, false);
-        const teslaLine = el('line-dc-tesla');
-        if (teslaLine) teslaLine.classList.add('active');
-      }
+    const chips = [];
+    activeStrings.forEach(function(s) {
+      chips.push({ label: s.label + ' → PV Total', kw: s.kw, type: 'solar' });
+    });
+    flows.filter(function(f) { return f.active && f.type !== 'solar'; }).forEach(function(f) {
+      chips.push({ label: f.from + ' → ' + f.to, kw: f.kw, type: f.type });
     });
 
-    setNodeState('node-home', active.length > 0, active.length === 0);
-    if (!flows.some(function(f) { return f.type === 'ev_charging' && f.active; })) {
-      setNodeState('node-dc', false, true);
-      setNodeState('node-tesla', false, true);
-    }
-
-    if (active.length === 0) return;
+    const empty = el('flow-empty');
+    if (empty) empty.hidden = chips.length > 0;
+    if (chips.length === 0) return;
 
     const wrap = document.createElement('div');
     wrap.id = 'flow-chips';
     wrap.className = 'flow-chips';
 
-    active.forEach(function(f) {
+    chips.forEach(function(f) {
       const chip = document.createElement('span');
       const cls = FLOW_TYPE_CLASSES[f.type] || 'chip-muted';
       const kw = isNullish(f.kw) ? '—' : f.kw.toFixed(2);
       chip.className = 'flow-chip ' + cls;
-      chip.textContent = f.from + ' → ' + f.to + ' · ' + kw + ' kW';
+      chip.textContent = f.label + ' · ' + kw + ' kW';
       wrap.appendChild(chip);
     });
 
