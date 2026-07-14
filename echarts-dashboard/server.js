@@ -32,11 +32,15 @@ const TELEGRAM_ALERTS_ENABLED = String(process.env.TELEGRAM_ALERTS_ENABLED || 't
 const TELEGRAM_ALERT_INTERVAL_MS = Math.max(15_000, parseInt(process.env.TELEGRAM_ALERT_INTERVAL_MS || '60000', 10));
 const BATTERY_FULL_SOC = parseFloat(process.env.BATTERY_FULL_SOC || '99');
 const BATTERY_LOW_SOC = parseFloat(process.env.BATTERY_LOW_SOC || '10');
+const BATTERY_RESERVE_SOC_PCT = parseFloat(process.env.BATTERY_RESERVE_SOC_PCT || '10');
 const PV_ACTIVE_THRESHOLD_KW = parseFloat(process.env.PV_ACTIVE_THRESHOLD_KW || '0.05');
 const GRID_IDLE_THRESHOLD_KW = parseFloat(process.env.GRID_IDLE_THRESHOLD_KW || '0.05');
 const DASHBOARD_AUTH_ENABLED = String(process.env.DASHBOARD_AUTH_ENABLED || 'false').toLowerCase() === 'true';
 const DASHBOARD_USERNAME = process.env.DASHBOARD_USERNAME || '';
 const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || '';
+const DASHBOARD_ENVIRONMENT = process.env.DASHBOARD_ENVIRONMENT || 'local';
+const DASHBOARD_RELEASE_VERSION = process.env.DASHBOARD_RELEASE_VERSION || 'dev';
+const DASHBOARD_RELEASE_LABEL = process.env.DASHBOARD_RELEASE_LABEL || DASHBOARD_RELEASE_VERSION;
 const DATA_STALE_THRESHOLD_MS = parseInt(process.env.DATA_STALE_THRESHOLD_MS || '120000', 10);
 const COLLECTOR_FAILURE_THRESHOLD = parseInt(process.env.COLLECTOR_FAILURE_THRESHOLD || '3', 10);
 const GRID_COST_RATE_THB_PER_KWH = 4.22;
@@ -715,6 +719,34 @@ from(bucket: "${INFLUXDB_BUCKET}")
   };
 }
 
+function computeBatteryReserveEta(soc, batteryPowerKw, capacityKwh) {
+  const reservePct = BATTERY_RESERVE_SOC_PCT;
+  if (soc === null || !Number.isFinite(soc)) {
+    return { reserve_soc_pct: reservePct, reserve_status: 'no_data', reserve_message: 'No SOC data', reserve_eta_minutes: null, reserve_eta_time_local: null };
+  }
+  if (!Number.isFinite(capacityKwh) || capacityKwh <= 0) {
+    return { reserve_soc_pct: reservePct, reserve_status: 'no_capacity', reserve_message: 'Capacity unknown', reserve_eta_minutes: null, reserve_eta_time_local: null };
+  }
+  if (soc <= reservePct) {
+    return { reserve_soc_pct: reservePct, reserve_status: 'reserve_reached', reserve_message: `SOC ${soc.toFixed(0)}% ≤ reserve ${reservePct}%`, reserve_eta_minutes: 0, reserve_eta_time_local: null };
+  }
+  if (batteryPowerKw === null || !Number.isFinite(batteryPowerKw) || batteryPowerKw >= -0.05) {
+    const msg = batteryPowerKw !== null && batteryPowerKw > 0.05 ? 'Charging' : 'Idle';
+    return { reserve_soc_pct: reservePct, reserve_status: 'not_discharging', reserve_message: msg, reserve_eta_minutes: null, reserve_eta_time_local: null };
+  }
+  const usableKwh = (soc - reservePct) / 100 * capacityKwh;
+  const minutes = Math.round(usableKwh / Math.abs(batteryPowerKw) * 60);
+  const etaDate = new Date(Date.now() + minutes * 60000);
+  const etaTime = etaDate.toLocaleTimeString('en-GB', { timeZone: TIMEZONE, hour: '2-digit', minute: '2-digit' });
+  return {
+    reserve_soc_pct: reservePct,
+    reserve_status: 'discharging',
+    reserve_message: `${etaTime} · ${formatMinutes(minutes)} to ${reservePct}%`,
+    reserve_eta_minutes: minutes,
+    reserve_eta_time_local: etaTime,
+  };
+}
+
 async function fetchLatestSnapshot() {
   const energyFlux = `
 from(bucket: "${INFLUXDB_BUCKET}")
@@ -861,15 +893,23 @@ from(bucket: "${INFLUXDB_BUCKET}")
   const batteryModules = [...batteryModuleMap.values()]
     .sort((a, b) => (parseInt(a.battery_index, 10) || 0) - (parseInt(b.battery_index, 10) || 0));
 
+  const capacityKwh = Number.isFinite(BATTERY_TOTAL_CAPACITY_KWH) ? BATTERY_TOTAL_CAPACITY_KWH : 18.08;
+  const reserveEta = computeBatteryReserveEta(
+    toNumber(energy.battery_soc),
+    toNumber(energy.battery_power),
+    capacityKwh
+  );
+
   return {
     timestamp: lastTime,
     energy,
     weather,
     daily,
     battery: {
-      total_capacity_kwh: Number.isFinite(BATTERY_TOTAL_CAPACITY_KWH) ? BATTERY_TOTAL_CAPACITY_KWH : 18.08,
+      total_capacity_kwh: capacityKwh,
       telemetry_scope: batteryModules.length ? 'module_pack_info' : 'aggregate',
       modules: batteryModules,
+      ...reserveEta,
     },
     battery_modules: batteryModules,
     pv_strings: pvStrings,
@@ -2870,6 +2910,9 @@ from(bucket: "${INFLUXDB_BUCKET}")
       bucket: INFLUXDB_BUCKET,
       org: INFLUXDB_ORG,
       latest_db_timestamp: lastTs,
+      environment: DASHBOARD_ENVIRONMENT,
+      release_version: DASHBOARD_RELEASE_VERSION,
+      release_label: DASHBOARD_RELEASE_LABEL,
     });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });

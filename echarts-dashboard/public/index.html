@@ -330,7 +330,8 @@
       <span class="realtime-note" data-i18n="top.realtime">เรียลไทม์ · รีเฟรชอัตโนมัติ 15 วินาที</span>
       <span id="last-updated">กำลังเชื่อมต่อ…</span>
       <span id="status-badge" class="pending">syncing</span>
-      <span class="version-marker" aria-label="Release candidate version">v1.0.1 candidate</span>
+      <span id="env-marker" class="version-marker" aria-label="Environment">env: loading</span>
+      <span id="version-marker" class="version-marker" aria-label="Release version">version: loading</span>
     </div>
   </header>
 
@@ -571,6 +572,11 @@
                   <span data-i18n="battery.time">เวลาประมาณ</span>
                   <strong id="battery-est-time">—</strong>
                   <small id="battery-est-time-sub">based on current power</small>
+                </div>
+                <div class="battery-detail wide">
+                  <span data-i18n="battery.reserveEta">Reserve ETA (10%)</span>
+                  <strong id="battery-reserve-eta">—</strong>
+                  <small id="battery-reserve-eta-sub"></small>
                 </div>
               </div>
             </aside>

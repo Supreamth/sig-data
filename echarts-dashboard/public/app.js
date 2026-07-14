@@ -84,7 +84,7 @@
       'history.title': 'วันที่ย้อนหลัง', 'history.note': 'การ์ดเรียลไทม์ (KPI · Power Flow · Battery Details) ยังเป็นข้อมูลสด',
       'common.today': 'วันนี้', 'common.status': 'สถานะ', 'common.localTime': 'เวลาท้องถิ่น', 'common.noData': 'ไม่มีข้อมูล',
       'weatherActual.title': 'อากาศ VS กำลังผลิต PV จริง', 'source.title': 'แหล่งพลังงานวันนี้', 'source.subtitle': 'วันนี้ / 00:00 → ข้อมูลล่าสุด',
-      'battery.title': 'รายละเอียด Battery', 'battery.subtitle': 'ค่า Battery รวมจาก telemetry ปัจจุบันของ Sigen', 'battery.note': 'Gauge ย้ายไปที่ Battery node ใน Power Flow', 'battery.capacity': 'ความจุรวม', 'battery.stored': 'พลังงานคงเหลือโดยประมาณ', 'battery.power': 'กำลังปัจจุบัน', 'battery.time': 'เวลาประมาณ',
+      'battery.title': 'รายละเอียด Battery', 'battery.subtitle': 'ค่า Battery รวมจาก telemetry ปัจจุบันของ Sigen', 'battery.note': 'Gauge ย้ายไปที่ Battery node ใน Power Flow', 'battery.capacity': 'ความจุรวม', 'battery.stored': 'พลังงานคงเหลือโดยประมาณ', 'battery.power': 'กำลังปัจจุบัน', 'battery.time': 'เวลาประมาณ', 'battery.reserveEta': 'Reserve ETA (สำรอง 10%)',
       'bft.title': 'เวลา Battery เต็ม', 'bft.first': '100% ครั้งแรกวันนี้', 'bft.sunrise': 'จาก Sunrise', 'bft.pvStart': 'จากเริ่ม PV', 'bft.afterSunrise': 'หลัง sunrise', 'bft.afterPv': 'หลังเริ่ม PV',
       'gridCost.title': 'แนวโน้มค่าไฟ Grid และมูลค่า Solar', 'gridCost.subtitle': 'ค่าไฟ Grid รายวัน, มูลค่า Solar โดยประมาณ และพลังงาน', 'trend.title': 'แนวโน้ม Battery SOC', 'trend.subtitle': 'ข้อมูลย้อนหลัง 24 ชั่วโมงจาก InfluxDB',
       'dc.title': 'DC Charger', 'dc.route': 'Home / Load Bus → DC Charger', 'dc.rate': 'Rate: ฿4.22/kWh', 'dc.noTelemetry': 'ไม่มีข้อมูล charger', 'dc.loadSide': 'อุปกรณ์ฝั่งโหลด', 'dc.realTelemetry': 'ข้อมูลจริง ev_power', 'dc.lastCharge': 'ชาร์จล่าสุด', 'dc.month': 'เดือนนี้', 'dc.total': 'รวมที่บันทึก', 'dc.stat': 'สถิติ DC Charging',
@@ -116,7 +116,7 @@
       'history.title': 'History Date', 'history.note': 'Realtime cards (KPI · Power Flow · Battery Details) remain live',
       'common.today': 'Today', 'common.status': 'Status', 'common.localTime': 'local time', 'common.noData': 'No data',
       'weatherActual.title': 'Weather VS Actual PV Power', 'source.title': 'Energy Sources Today', 'source.subtitle': 'Today / 00:00 → latest actual',
-      'battery.title': 'Battery Details', 'battery.subtitle': 'Aggregate battery values from current Sigen telemetry', 'battery.note': 'Gauge moved to Power Flow battery node', 'battery.capacity': 'Total Capacity', 'battery.stored': 'Estimated Stored', 'battery.power': 'Current Power', 'battery.time': 'Estimated Time',
+      'battery.title': 'Battery Details', 'battery.subtitle': 'Aggregate battery values from current Sigen telemetry', 'battery.note': 'Gauge moved to Power Flow battery node', 'battery.capacity': 'Total Capacity', 'battery.stored': 'Estimated Stored', 'battery.power': 'Current Power', 'battery.time': 'Estimated Time', 'battery.reserveEta': 'Reserve ETA (10%)',
       'bft.title': 'Battery Full Time', 'bft.first': 'First 100% Today', 'bft.sunrise': 'From Sunrise', 'bft.pvStart': 'From PV Start', 'bft.afterSunrise': 'after sunrise', 'bft.afterPv': 'after PV started',
       'gridCost.title': 'Grid Cost & Solar Value Trend', 'gridCost.subtitle': 'Daily grid cost, estimated solar value and energy', 'trend.title': 'Battery SOC Trend', 'trend.subtitle': '24-hour time-series from InfluxDB',
       'dc.title': 'DC Charger', 'dc.route': 'Home / Load Bus → DC Charger', 'dc.rate': 'Rate: ฿4.22/kWh', 'dc.noTelemetry': 'No charger telemetry', 'dc.loadSide': 'Load-side device', 'dc.realTelemetry': 'Real ev_power telemetry', 'dc.lastCharge': 'Last charge', 'dc.month': 'This month', 'dc.total': 'Total recorded', 'dc.stat': 'DC Charging Stat',
@@ -763,6 +763,23 @@
     setText('battery-est-time', estimatedHours === null || !Number.isFinite(estimatedHours) ? '—' : formatDurationHours(estimatedHours));
     setText('battery-est-time-sub', power > 0 ? 'to full at current charge rate' : power < 0 ? 'to empty at current discharge rate' : 'battery idle');
 
+    const reserveStatus = batteryMeta.reserve_status;
+    const reserveMessage = batteryMeta.reserve_message;
+    const reserveSocPct = batteryMeta.reserve_soc_pct !== undefined ? batteryMeta.reserve_soc_pct : 10;
+    let reserveText = '—';
+    let reserveSub = '';
+    if (reserveStatus === 'discharging' && reserveMessage) {
+      reserveText = reserveMessage;
+      reserveSub = currentLang === 'th' ? `ถึง ${reserveSocPct}% สำรอง` : `to ${reserveSocPct}% reserve`;
+    } else if (reserveStatus === 'reserve_reached') {
+      reserveText = currentLang === 'th' ? `ถึง reserve ${reserveSocPct}% แล้ว` : `Reserve ${reserveSocPct}% reached`;
+      reserveSub = '';
+    } else if (reserveStatus === 'not_discharging') {
+      reserveText = reserveMessage || '—';
+      reserveSub = currentLang === 'th' ? 'ETA คำนวณขณะ Discharging' : 'ETA available while discharging';
+    }
+    setText('battery-reserve-eta', reserveText);
+    setText('battery-reserve-eta-sub', reserveSub);
   }
 
   // Like the global n() but treats null/undefined/"" as no-data rather than 0.
@@ -2757,6 +2774,18 @@
   })();
 
   window.addEventListener('resize', () => Object.values(charts).forEach(c => c && c.resize()));
+
+  fetch('/api/health')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(data) {
+      if (!data) return;
+      var envEl = document.getElementById('env-marker');
+      var verEl = document.getElementById('version-marker');
+      if (envEl) envEl.textContent = 'env: ' + (data.environment || 'local');
+      if (verEl) verEl.textContent = data.release_label || data.release_version || 'dev';
+    })
+    .catch(function() {});
+
   applyLanguage();
   refresh();
   schedule();
